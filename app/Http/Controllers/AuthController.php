@@ -10,7 +10,7 @@ class AuthController extends Controller
     /**
      * Menampilkan halaman login
      */
-    public function showLoginForm()
+    public function showAuthForm()
     {
         return view('Auth.login'); // Menggunakan 'Auth' dengan huruf kapital sesuai nama folder di explorer Anda
     }

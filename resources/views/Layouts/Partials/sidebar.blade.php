@@ -38,6 +38,21 @@
                 </ul>
             </li>
 
+            <!-- Parent Menu Pengguna -->
+            <li>
+                <a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
+                    <i class="flaticon-381-user-7"></i>
+                    <span class="nav-text">Pengguna</span>
+                </a>
+                <ul aria-expanded="false">
+                    <!-- Sub-menu 1: Menampilkan daftar seluruh Satker -->
+                    <li><a href="{{ url('/pengguna/satker') }}">Satker</a></li>
+                    
+                    <!-- Sub-menu 2: Menampilkan daftar Pengguna/Admin dari setiap Satker -->
+                    <li><a href="{{ url('/pengguna/admin') }}">Pengguna Satker</a></li>
+                </ul>
+            </li>
+
             <!-- 4. MANAJEMEN SISTEM (Khusus Admin) -->
             <li><a class="has-arrow ai-icon" href="javascript:void(0)" aria-expanded="false">
                     <i class="flaticon-381-settings-2"></i>

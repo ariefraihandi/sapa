@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BukuTamuController;
+use App\Http\Controllers\PenggunaController;
 
 // Jalur Tampilan Awal / Login
 Route::get('/', [BukuTamuController::class, 'bukuTamuIndex'])->name('buku-tamu-s');
@@ -10,24 +11,29 @@ Route::get('/buku-tamu', [BukuTamuController::class, 'bukuTamuIndex'])->name('bu
 
 Route::post('/buku-tamu', [BukuTamuController::class, 'store'])->name('buku-tamu.store');
 
-// Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::prefix('pengguna')->group(function () {
+    Route::get('/satker', [PenggunaController::class, 'satker'])->name('pengguna.satker');
+    Route::get('/admin', [PenggunaController::class, 'admin'])->name('pengguna.admin');
+});
 
-// // Tambahkan Route POST ini untuk menangani proses logout dari tombol di header
-// Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/auth', [AuthController::class, 'showAuthForm'])->name('auth');
 
-// // Halaman Menu Dokumen & Insidentil
-// Route::get('/dokumen', function () {
-//     return view('Pages.Dokumen.index');
-// });
+// Tambahkan Route POST ini untuk menangani proses logout dari tombol di header
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Route::get('/layanan', function () {
-//     return view('Pages.Layanan.persyaratan');
-// });
+// Halaman Menu Dokumen & Insidentil
+Route::get('/dokumen', function () {
+    return view('Pages.Dokumen.index');
+});
 
-// Route::get('/cekberkas', function () {
-//     return view('Pages.Layanan.cek-berkas');
-// });
+Route::get('/layanan', function () {
+    return view('Pages.Layanan.persyaratan');
+});
 
-// Route::get('/chat', function () {
-//     return view('Pages.Layanan.chat');
-// });
+Route::get('/cekberkas', function () {
+    return view('Pages.Layanan.cek-berkas');
+});
+
+Route::get('/chat', function () {
+    return view('Pages.Layanan.chat');
+});

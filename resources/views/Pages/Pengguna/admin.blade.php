@@ -1,0 +1,221 @@
+@extends('Layouts.app')
+
+@section('content')
+<div class="container-fluid">
+    <!-- Header / Breadcrumb -->
+    <div class="row page-titles mx-0">
+        <div class="col-sm-6 p-md-0">
+            <div class="welcome-text">
+                <h4>Manajemen Pengguna Satker</h4>
+                <p class="mb-0">Kelola akun administrator dan petugas PTSP dari seluruh Mahkamah Syar'iyah se-Aceh</p>
+            </div>
+        </div>
+        <div class="col-sm-6 p-md-0 justify-content-sm-end mt-2 mt-sm-0 d-flex">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="javascript:void(0)">Pengguna</a></li>
+                <li class="breadcrumb-item active"><a href="javascript:void(0)">Admin Satker</a></li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Filter & Aksi Tambah -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body py-3">
+                    <form action="{{ url('/pengguna/admin') }}" method="GET" class="row g-3 align-items-center">
+                        <!-- Filter Satker -->
+                        <div class="col-md-4">
+                            <label class="form-label text-dark font-weight-bold mb-1">Filter Satuan Kerja</label>
+                            <select name="satker_id" class="form-control text-dark" onchange="this.form.submit()">
+                                <option value="">-- Semua Satker --</option>
+                                @foreach($satkers as $satker)
+                                    <option value="{{ $satker->id }}" {{ isset($selectedSatker) && $selectedSatker == $satker->id ? 'selected' : '' }}>
+                                        {{ $satker->satker_name }} ({{ $satker->satker_short_name }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Pencarian Nama / NIP -->
+                        <div class="col-md-5">
+                            <label class="form-label text-dark font-weight-bold mb-1">Cari Admin / NIP / Email</label>
+                            <div class="input-group">
+                                <input type="text" name="search" class="form-control" placeholder="Ketik nama, NIP, atau email..." value="{{ request('search') }}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="flaticon-381-search-1"></i> Cari
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tombol Tambah Pengguna -->
+                        <div class="col-md-3 text-md-end mt-3 mt-md-auto">
+                            <button type="button" class="btn btn-success text-white w-100" data-bs-toggle="modal" data-bs-target="#modalTambahUser" style="background-color: #0b6e39; border-color: #0b6e39;">
+                                <i class="fa fa-user-plus me-2"></i> Tambah Admin Satker
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table Pengguna -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title text-success font-weight-bold mb-0">
+                        <i class="flaticon-381-user-7 me-2"></i> Daftar Pengguna Administrasi
+                    </h5>
+                    <span class="badge bg-light text-dark border">Total: {{ count($users) }} Pengguna</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4" style="width: 50px;">No</th>
+                                    <th>Pengguna</th>
+                                    <th>Satuan Kerja</th>
+                                    <th>Jabatan / Role</th>
+                                    <th>Kontak</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center" style="width: 140px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($users as $index => $user)
+                                    <tr>
+                                        <td class="ps-4 fw-bold">{{ $index + 1 }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-md me-3 rounded-circle bg-light d-flex align-items-center justify-content-center text-success fw-bold" style="width: 42px; height: 42px; min-width: 42px;">
+                                                    @if($user->avatar)
+                                                        <img src="{{ asset('storage/' . $user->avatar) }}" class="rounded-circle w-100 h-100" style="object-fit: cover;">
+                                                    @else
+                                                        {{ strtoupper(substr($user->name, 0, 2)) }}
+                                                    @endif
+                                                </div>
+                                                <div>
+                                                    <h6 class="text-dark font-weight-bold mb-0">{{ $user->name }}</h6>
+                                                    <small class="text-muted">NIP: {{ $user->nip ?? '-' }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-success fw-bold border">
+                                                {{ $user->satker->satker_short_name ?? '-' }}
+                                            </span>
+                                            <div class="small text-muted" style="font-size: 0.75rem;">
+                                                {{ $user->satker->satker_name ?? 'Pusat MS Aceh' }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark">{{ $user->jabatan ?? 'Administrator' }}</div>
+                                            <small class="badge bg-soft-primary text-primary px-2 py-1">
+                                                {{ $user->role->role_name ?? 'admin' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="small text-dark"><i class="fa fa-envelope me-1 text-muted"></i> {{ $user->email }}</div>
+                                            <div class="small text-muted"><i class="fa fa-phone me-1 text-muted"></i> {{ $user->phone ?? '-' }}</div>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($user->is_active)
+                                                <span class="badge bg-success text-white px-3 py-1">Aktif</span>
+                                            @else
+                                                <span class="badge bg-danger text-white px-3 py-1">Non-Aktif</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center pe-4">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-xs btn-outline-warning" title="Reset Password" data-bs-toggle="modal" data-bs-target="#modalResetPass{{ $user->id }}">
+                                                    <i class="fa fa-key"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-xs btn-outline-primary" title="Edit Pengguna" data-bs-toggle="modal" data-bs-target="#modalEditUser{{ $user->id }}">
+                                                    <i class="fa fa-pencil"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-5">
+                                            <i class="flaticon-381-user-7 display-4 d-block mb-2 text-muted"></i>
+                                            Belum ada data pengguna admin yang ditemukan.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TAMBAH USER BARU -->
+<div class="modal fade" id="modalTambahUser" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background-color: #0b6e39;">
+                <h5 class="modal-header-title text-white mb-0"><i class="fa fa-user-plus me-2"></i> Tambah Admin Satker Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url('/pengguna/admin/store') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4 text-dark">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Satuan Kerja (Satker) <span class="text-danger">*</span></label>
+                            <select name="satker_id" class="form-control text-dark" required>
+                                <option value="">-- Pilih Satker --</option>
+                                @foreach($satkers as $satker)
+                                    <option value="{{ $satker->id }}">{{ $satker->satker_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">NIP (Opsional)</label>
+                            <input type="text" name="nip" class="form-control" placeholder="Masukkan 18 digit NIP">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Nama Lengkap <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="Nama lengkap petugas" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Jabatan <span class="text-danger">*</span></label>
+                            <input type="text" name="jabatan" class="form-control" placeholder="Contoh: Administrator PTSP" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Alamat Email <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control" placeholder="admin@ptsp.go.id" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Nomor Telepon / WA</label>
+                            <input type="text" name="phone" class="form-control" placeholder="08xxxxxxxxxx">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Password Default <span class="text-danger">*</span></label>
+                            <input type="password" name="password" class="form-control" placeholder="Minimal 8 karakter" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label font-weight-bold">Status Akun</label>
+                            <select name="is_active" class="form-control text-dark">
+                                <option value="1">Aktif</option>
+                                <option value="0">Non-Aktif</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success text-white" style="background-color: #0b6e39;">Simpan Pengguna</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
