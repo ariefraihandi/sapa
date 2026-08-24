@@ -1,9 +1,52 @@
-<!--**********************************
-    Sidebar start
-***********************************-->
 <div class="deznav">
     <div class="deznav-scroll">
+        @php
+            $userRole = Auth::user()->role;
+
+            // Ambil menu utama yang diizinkan untuk role user ini
+            $allowedMenus = \App\Models\Menu::whereHas('accesses', function($q) use ($userRole) {
+                                $q->where('role_id', $userRole->id);
+                            })
+                            ->where('is_active', true)
+                            ->orderBy('order', 'asc')
+                            ->get();
+        @endphp
+
         <ul class="metismenu" id="menu">
+            @foreach ($allowedMenus as $menu)
+                @if ($menu->is_dropdown)
+                    @php
+                        // Ambil submenu yang diizinkan untuk role user ini
+                        $allowedSubmenus = $menu->submenus()->whereHas('accesses', function($q) use ($userRole) {
+                                            $q->where('role_id', $userRole->id);
+                                        })->orderBy('order', 'asc')->get();
+                    @endphp
+
+                    @if($allowedSubmenus->count() > 0)
+                        <li>
+                            <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
+                                <i class="{{ $menu->icon }}"></i>
+                                <span class="nav-text">{{ $menu->name }}</span>
+                            </a>
+                            <ul aria-expanded="false">
+                                @foreach ($allowedSubmenus as $sub)
+                                    <li><a href="{{ url($sub->url) }}">{{ $sub->submenu }}</a></li>
+                                @endforeach
+                            </ul>
+                        </li>
+                    @endif
+                @else
+                    <li>
+                        <a href="{{ url($menu->url) }}">
+                            <i class="{{ $menu->icon }}"></i>
+                            <span class="nav-text">{{ $menu->name }}</span>
+                        </a>
+                    </li>
+                @endif
+            @endforeach
+        </ul>
+
+        {{-- <ul class="metismenu" id="menu">
             
             <!-- 1. DASHBOARD -->
             <li><a href="{{ url('/dashboard') }}" class="ai-icon" aria-expanded="false">
@@ -64,14 +107,17 @@
                 </ul>
             </li>
 
-        </ul>
+        </ul> --}}
 
         <div class="copyright text-center mt-4">
             <p class="fs-12"><strong>SAPA-MS</strong> <br/> Mahkamah Syar'iyah se-Aceh</p>
             <p class="fs-12">Developed by <a href="#" class="text-primary">BILIKMEDIA</a> &copy; {{ date('Y') }}</p>
         </div>
+        <div class="deznav-footer">
+				<a href="https://drive.google.com/drive/folders/1r5FQZfQdTHXM3xsZ7f66N52X3CBsE-Lo?usp=drive_link" target="_blank" class="btn btn-docs btn-success w-100 mb-2">
+					<span>Panduan Penggunaan</span>
+					<i class="fa-solid fa-arrow-up rotate-x"></i>
+				</a>
+			</div>
     </div>
 </div>
-<!--**********************************
-    Sidebar end
-***********************************-->

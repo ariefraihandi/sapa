@@ -11,7 +11,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Favicon icon -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/favicon.avif') }}">
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/logo/sapa.png') }}">
     
     <!-- Fonts & Icons CDN -->
     <link rel="stylesheet" href="https://site-assets.fontawesome.com/releases/v6.5.1/css/all.css">
@@ -349,6 +349,10 @@
             .container-auth.sign-up .text.sign-up {
                 opacity: 1;
             }
+            
+        }
+        .swal2-container .bootstrap-select {
+            display: none !important;
         }
     </style>
 </head>

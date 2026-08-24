@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 @include('Layouts.Partials.head')
 
@@ -11,8 +11,8 @@
             <div class="sk-child sk-bounce3"></div>
         </div>
     </div>
-    <div id="main-wrapper">
 
+    <div id="main-wrapper">
         @include('Layouts.Partials.header')
         
         @include('Layouts.Partials.sidebar')
@@ -20,11 +20,14 @@
         <div class="content-body">
             @yield('content')
         </div>
-        @include('Layouts.Partials.footer')
 
+        @include('Layouts.Partials.footer')
     </div>
 
     @include('Layouts.Partials.script')
+
+    <!-- Stack khusus untuk script tambahan per halaman -->
+    @stack('scripts')
     
 </body>
 </html>

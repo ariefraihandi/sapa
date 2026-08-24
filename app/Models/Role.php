@@ -37,4 +37,14 @@ class Role extends Model
     {
         return $this->belongsTo(Satker::class, 'satker_id', 'id');
     }
+
+    public function menuAccesses()
+    {
+        return $this->hasMany(MenuAccess::class, 'role_id', 'id');
+    }
+
+    public function submenuAccesses()
+    {
+        return $this->hasMany(SubmenuAccess::class, 'role_id', 'id');
+    }
 }

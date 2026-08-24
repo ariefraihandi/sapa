@@ -21,9 +21,10 @@ return new class extends Migration
             $table->uuid('role_id');
             $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
 
-            // Data Utama Pegawai
-            $table->string('nip')->unique()->nullable(); // Bikin nullable jika ada user non-NIP (misal dev/vendor)
+            // Data Utama Pegawai & Otentikasi
+            $table->string('nip')->unique()->nullable(); // Nullable jika ada user non-NIP (misal dev/vendor)
             $table->string('name');
+            $table->string('username')->unique(); // <--- TAMBAHAN KOLOM USERNAME (UNIQUE)
             $table->string('jabatan')->nullable();
             $table->string('email')->unique();
             $table->string('phone')->nullable();
@@ -60,8 +61,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

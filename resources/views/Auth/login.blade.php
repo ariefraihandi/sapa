@@ -58,7 +58,7 @@
                     <div class="form sign-in">
                         
                         <!-- Header Brand Logo -->
-                        <div class="d-flex align-items-center justify-content-center mb-3">                         
+                        <div class="d-flex align-items-center justify-content-center mb-3">                        
                             <div class="text-start">
                                 <h2 class="h5 fw-bold mb-0" style="color: #0b6e39;">SAPA <span style="color: #10b981;">MS ACEH</span></h2>
                             </div>
@@ -77,11 +77,11 @@
                             </div>
                         @endif
 
-                        <form action="{{ url('/login') }}" method="POST">
+                        <form action="{{ route('login.process') }}" method="POST">
                             @csrf
                             <div class="input-group-custom">
                                 <i class='bx bxs-user'></i>
-                                <input type="text" name="username" value="{{ old('username') }}" placeholder="Username / NIP" required autofocus>
+                                <input type="text" name="username" value="{{ old('username') }}" placeholder="Username" required autofocus>
                             </div>
                             <div class="input-group-custom">
                                 <i class='bx bxs-lock-alt'></i>
@@ -93,7 +93,7 @@
                                 Masuk Sekarang
                             </button>
 
-                            <!-- Link Lupa Password di Bawah Tombol -->
+                            <!-- Link Lupa Password -->
                             <div class="text-center mt-2">
                                 <a href="#" class="text-decoration-none" style="color: #0b6e39; font-size: 0.8rem;">Lupa password?</a>
                             </div>
@@ -103,8 +103,6 @@
                             <span>Belum punya akun?</span>
                             <b onclick="toggle()" class="pointer">Daftar di sini</b>
                         </p>
-
-                        <!-- Footer developed by dihapus -->
 
                     </div>
                 </div>
@@ -150,6 +148,30 @@
         setTimeout(() => {
             container.classList.add('sign-in')
         }, 200)
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- 3. Listener Session Laravel -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @if(session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: "{{ session('success') }}",
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            @endif
+
+            @if(session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: "{{ session('error') }}"                                    
+                });
+            @endif
+        });
     </script>
 </body>
 </html>

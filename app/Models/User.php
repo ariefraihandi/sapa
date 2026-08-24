@@ -22,6 +22,7 @@ class User extends Authenticatable
         'role_id',
         'nip',
         'name',
+        'username',
         'jabatan',
         'email',
         'phone',
@@ -64,4 +65,5 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class, 'role_id', 'id');
     }
+
 }

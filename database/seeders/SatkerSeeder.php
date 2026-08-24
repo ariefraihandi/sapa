@@ -130,7 +130,7 @@ class SatkerSeeder extends Seeder
             [
                 'satker_name'       => "Mahkamah Syar'iyah Blangkejeren",
                 'satker_short_name' => "MS Blangkejeren",
-                'satker_vshort'     => "ms-bkp",
+                'satker_vshort'     => "ms-bkj",
             ],
         ];
 

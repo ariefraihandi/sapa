@@ -39,4 +39,12 @@ class Satker extends Model
             }
         });
     }
+
+    /**
+     * Relasi ke User (Satu Satker memiliki banyak User)
+     */
+    public function users()
+    {
+        return $this->hasMany(User::class, 'satker_id', 'id');
+    }
 }

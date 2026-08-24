@@ -18,16 +18,14 @@
         </div>
     </div>
 
-    <!-- Filter & Aksi Tambah -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-body py-3">
-                    <form action="{{ url('/pengguna/admin') }}" method="GET" class="row g-3 align-items-center">
+            <div class="card shadow-sm border-0 mb-0">
+                <div class="card-body py-2 px-3">
+                    <form action="{{ url('/system/users') }}" method="GET" class="row g-2 align-items-center">
                         <!-- Filter Satker -->
                         <div class="col-md-4">
-                            <label class="form-label text-dark font-weight-bold mb-1">Filter Satuan Kerja</label>
-                            <select name="satker_id" class="form-control text-dark" onchange="this.form.submit()">
+                            <select name="satker_id" class="form-select form-select-sm text-dark" onchange="this.form.submit()">
                                 <option value="">-- Semua Satker --</option>
                                 @foreach($satkers as $satker)
                                     <option value="{{ $satker->id }}" {{ isset($selectedSatker) && $selectedSatker == $satker->id ? 'selected' : '' }}>
@@ -37,21 +35,25 @@
                             </select>
                         </div>
 
-                        <!-- Pencarian Nama / NIP -->
+                        <!-- Pencarian Nama / Username / Email -->
                         <div class="col-md-5">
-                            <label class="form-label text-dark font-weight-bold mb-1">Cari Admin / NIP / Email</label>
-                            <div class="input-group">
-                                <input type="text" name="search" class="form-control" placeholder="Ketik nama, NIP, atau email..." value="{{ request('search') }}">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="flaticon-381-search-1"></i> Cari
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" placeholder="Cari nama, username, email..." value="{{ request('search') }}">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="flaticon-381-search-1 me-1"></i> Cari
                                 </button>
+                                @if(request('search') || request('satker_id'))
+                                    <a href="{{ url('/system/users') }}" class="btn btn-outline-secondary btn-sm" title="Reset Filter">
+                                        <i class="fa fa-refresh"></i>
+                                    </a>
+                                @endif
                             </div>
                         </div>
 
                         <!-- Tombol Tambah Pengguna -->
-                        <div class="col-md-3 text-md-end mt-3 mt-md-auto">
-                            <button type="button" class="btn btn-success text-white w-100" data-bs-toggle="modal" data-bs-target="#modalTambahUser" style="background-color: #0b6e39; border-color: #0b6e39;">
-                                <i class="fa fa-user-plus me-2"></i> Tambah Admin Satker
+                        <div class="col-md-3 text-md-end">
+                            <button type="button" class="btn btn-sm btn-success text-white w-100" data-bs-toggle="modal" data-bs-target="#modalTambahUser" style="background-color: #0b6e39; border-color: #0b6e39;">
+                                <i class="fa fa-user-plus me-1"></i> Tambah Pengguna
                             </button>
                         </div>
                     </form>
@@ -60,37 +62,38 @@
         </div>
     </div>
 
-    <!-- Data Table Pengguna -->
+    <!-- Data Table Pengguna (COMPACT VERSION) -->
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title text-success font-weight-bold mb-0">
-                        <i class="flaticon-381-user-7 me-2"></i> Daftar Pengguna Administrasi
-                    </h5>
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h6 class="card-title text-success font-weight-bold mb-0">
+                        <i class="flaticon-381-user-7 me-1"></i> Daftar Pengguna Administrasi
+                    </h6>
                     <span class="badge bg-light text-dark border">Total: {{ count($users) }} Pengguna</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <!-- Tambahkan table-sm & align-middle untuk tampilan padat -->
+                        <table class="table table-sm table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-4" style="width: 50px;">No</th>
-                                    <th>Pengguna</th>
-                                    <th>Satuan Kerja</th>
-                                    <th>Jabatan / Role</th>
-                                    <th>Kontak</th>
-                                    <th class="text-center">Status</th>
-                                    <th class="text-center" style="width: 140px;">Aksi</th>
+                                    <th class="ps-3 py-2" style="width: 40px;">No</th>
+                                    <th class="py-2">Pengguna</th>
+                                    <th class="py-2">Satuan Kerja</th>
+                                    <th class="py-2">Jabatan / Role</th>
+                                    <th class="py-2">Kontak</th>
+                                    <th class="text-center py-2">Status</th>
+                                    <th class="text-center py-2 pe-3" style="width: 100px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse ($users as $index => $user)
                                     <tr>
-                                        <td class="ps-4 fw-bold">{{ $index + 1 }}</td>
-                                        <td>
+                                        <td class="ps-3 fw-bold text-muted small py-1">{{ $index + 1 }}</td>
+                                        <td class="py-1">
                                             <div class="d-flex align-items-center">
-                                                <div class="avatar avatar-md me-3 rounded-circle bg-light d-flex align-items-center justify-content-center text-success fw-bold" style="width: 42px; height: 42px; min-width: 42px;">
+                                                <div class="avatar avatar-sm me-2 rounded-circle bg-light d-flex align-items-center justify-content-center text-success fw-bold" style="width: 32px; height: 32px; min-width: 32px; font-size: 0.75rem;">
                                                     @if($user->avatar)
                                                         <img src="{{ asset('storage/' . $user->avatar) }}" class="rounded-circle w-100 h-100" style="object-fit: cover;">
                                                     @else
@@ -98,42 +101,44 @@
                                                     @endif
                                                 </div>
                                                 <div>
-                                                    <h6 class="text-dark font-weight-bold mb-0">{{ $user->name }}</h6>
-                                                    <small class="text-muted">NIP: {{ $user->nip ?? '-' }}</small>
+                                                    <div class="text-dark font-weight-bold small line-height-1">{{ $user->name }}</div>
+                                                    <small class="text-primary font-weight-bold" style="font-size: 0.7rem;">{{ $user->username ?? '-' }}</small>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <span class="badge bg-light text-success fw-bold border">
+                                        <td class="py-1">
+                                            <span class="badge bg-light text-success font-weight-bold border py-0 px-2" style="font-size: 0.7rem;">
                                                 {{ $user->satker->satker_short_name ?? '-' }}
                                             </span>
-                                            <div class="small text-muted" style="font-size: 0.75rem;">
+                                            <div class="text-muted" style="font-size: 0.7rem;">
                                                 {{ $user->satker->satker_name ?? 'Pusat MS Aceh' }}
                                             </div>
                                         </td>
-                                        <td>
-                                            <div class="fw-semibold text-dark">{{ $user->jabatan ?? 'Administrator' }}</div>
-                                            <small class="badge bg-soft-primary text-primary px-2 py-1">
+                                        <td class="py-1">
+                                            <div class="small text-dark font-weight-semibold" style="font-size: 0.75rem;">{{ $user->jabatan ?? '-' }}</div>
+                                            <span class="badge bg-soft-primary text-primary px-1 py-0" style="font-size: 0.65rem;">
                                                 {{ $user->role->role_name ?? 'admin' }}
-                                            </small>
+                                            </span>
                                         </td>
-                                        <td>
-                                            <div class="small text-dark"><i class="fa fa-envelope me-1 text-muted"></i> {{ $user->email }}</div>
-                                            <div class="small text-muted"><i class="fa fa-phone me-1 text-muted"></i> {{ $user->phone ?? '-' }}</div>
-                                        </td>
-                                        <td class="text-center">
-                                            @if($user->is_active)
-                                                <span class="badge bg-success text-white px-3 py-1">Aktif</span>
-                                            @else
-                                                <span class="badge bg-danger text-white px-3 py-1">Non-Aktif</span>
+                                        <td class="py-1">
+                                            <div class="small text-dark" style="font-size: 0.75rem;"><i class="fa fa-envelope me-1 text-muted"></i>{{ $user->email }}</div>
+                                            @if($user->phone)
+                                                <div class="small text-muted" style="font-size: 0.7rem;"><i class="fa fa-phone me-1 text-muted"></i>{{ $user->phone }}</div>
                                             @endif
                                         </td>
-                                        <td class="text-center pe-4">
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-xs btn-outline-warning" title="Reset Password" data-bs-toggle="modal" data-bs-target="#modalResetPass{{ $user->id }}">
+                                        <td class="text-center py-1">
+                                            @if($user->is_active)
+                                                <span class="badge bg-success text-white px-2 py-0" style="font-size: 0.65rem;">Aktif</span>
+                                            @else
+                                                <span class="badge bg-danger text-white px-2 py-0" style="font-size: 0.65rem;">Non-Aktif</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center pe-3 py-1">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-xs btn-outline-warning py-0 px-1" title="Reset Password" data-bs-toggle="modal" data-bs-target="#modalResetPass{{ $user->id }}">
                                                     <i class="fa fa-key"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-xs btn-outline-primary" title="Edit Pengguna" data-bs-toggle="modal" data-bs-target="#modalEditUser{{ $user->id }}">
+                                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1" title="Edit Pengguna" data-bs-toggle="modal" data-bs-target="#modalEditUser{{ $user->id }}">
                                                     <i class="fa fa-pencil"></i>
                                                 </button>
                                             </div>
@@ -141,8 +146,8 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-5">
-                                            <i class="flaticon-381-user-7 display-4 d-block mb-2 text-muted"></i>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="flaticon-381-user-7 display-4 d-block mb-1 text-muted"></i>
                                             Belum ada data pengguna admin yang ditemukan.
                                         </td>
                                     </tr>
