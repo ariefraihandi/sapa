@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\SyaratPerkara;
 use App\Models\JenisPerkara;
 use App\Models\Satker;
+use App\Models\PtspDaerah;
+use App\Models\PengunjungPtsp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -52,7 +54,7 @@ class SyaratPerkaraController extends Controller
         $user = Auth::user();
         $userSatker = $user->satker;
         $isMsAceh = !$user->satker_id || ($userSatker && $userSatker->satker_vshort === 'ms-aceh');
-
+        $title = 'Syarat Perkara';
         $satkers = Satker::orderBy('satker_name', 'asc')->get();
 
         $query = SyaratPerkara::with(['jenisPerkara', 'satker']);
@@ -112,6 +114,7 @@ class SyaratPerkaraController extends Controller
             'syaratPerkara' => $syaratPerkaraGrouped,
             'jenisPerkara'  => $jenisPerkara,
             'satkers'       => $satkers,
+            'title'         => $title,
             'isMsAceh'      => $isMsAceh
         ]);
     }
@@ -307,6 +310,104 @@ class SyaratPerkaraController extends Controller
             'message'           => $isGroupApproved 
                                    ? 'Status dokumen diubah. Seluruh syarat telah AKTIF, layanan otomatis TAYANG!' 
                                    : 'Status dokumen diubah. Masih ada dokumen non-aktif, status layanan PENDING REVIEW.'
+        ]);
+    }
+
+    public function ptspDaerah()
+    {
+        $user = Auth::user();
+        $userSatker = $user->satker;
+
+        // Cek apakah user MS Aceh / Super Admin
+        $isMsAceh = ($userSatker && ($userSatker->satker_vshort === 'ms-aceh' || strtolower($userSatker->satker_short_name) === 'ms aceh'));
+
+        if ($isMsAceh) {
+            // Mode MS Aceh: Monitoring Tabel Seluruh Satker
+            $satkers = Satker::with('ptspDaerah')
+                ->orderBy('satker_name', 'asc')
+                ->get();
+
+            return view('Pages.PTSP.index_admin', compact('satkers'));
+        } else {
+            // Mode Satker Daerah: Form Edit Profil Mandiri
+            $satker = Satker::with('ptspDaerah')->findOrFail($user->satker_id);
+            $ptsp = $satker->ptspDaerah;
+
+            return view('Pages.PTSP.index_daerah', compact('satker', 'ptsp'));
+        }
+    }
+
+    /**
+     * Simpan / Update Data PTSP
+     */
+    public function updatePtspDaerah(Request $request, $satker_id)
+    {
+        $request->validate([
+            'nama_pj'              => 'required|string|max:255',
+            'no_hp_pj'             => 'required|string|max:50',
+            'no_wa_layanan'        => 'nullable|string|max:50',
+            'has_whatsapp_service' => 'required|boolean',
+            'is_call_able'         => 'required|boolean',
+        ]);
+
+        $formatHp = function ($number) {
+            if (empty($number)) return null;
+            $clean = preg_replace('/[^0-9]/', '', $number);
+            return str_starts_with($clean, '0') ? '62' . substr($clean, 1) : $clean;
+        };
+
+        $noWaLayananClean = $formatHp($request->no_wa_layanan);
+        $noHpPjClean      = $formatHp($request->no_hp_pj);
+
+        // Update / Create data di ptsp_daerahs
+        PtspDaerah::updateOrCreate(
+            ['satker_id' => $satker_id],
+            [
+                'nama_pj'              => $request->nama_pj,
+                'no_hp_pj'             => $noHpPjClean,
+                'has_whatsapp_service' => $request->has_whatsapp_service,
+                'no_wa_layanan'        => $noWaLayananClean,
+                'is_call_able'         => $request->is_call_able,
+            ]
+        );
+
+        // Update nomor WhatsApp di tabel satkers
+        $satker = Satker::findOrFail($satker_id);
+        $satker->update([
+            'whatsapp' => $noWaLayananClean
+        ]);
+
+        return redirect()->back()->with('success', 'Data PTSP berhasil diperbarui!');
+    }
+
+    public function indexPengunjung()
+    {
+        $user = Auth::user();
+
+        // Query awal dengan relasi satker
+        $query = PengunjungPtsp::with('satker')->latest();
+
+        // Jika bukan Admin MS Aceh (misal: role 'daerah' atau punya satker_id khusus)
+        if ($user->role !== 'admin' && $user->satker_id) {
+            $query->where('satker_id', $user->satker_id);
+        }
+
+        $pengunjung = $query->paginate(15);
+
+        return view('Pages.PTSP.pengunjung_index', compact('pengunjung'));
+    }
+
+    // 2. Action Update Status Tindak Lanjut via WA Click
+    public function toggleTindakLanjut($id)
+    {
+        $item = PengunjungPtsp::findOrFail($id);
+        
+        // Ubah status menjadi sudah ditindaklanjuti
+        $item->update(['is_tindak_lanjut' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status berhasil diperbarui!'
         ]);
     }
 }

@@ -13,11 +13,11 @@ use App\Http\Middleware\CheckMenuAccess;
 | Public Routes (Akses Tanpa Login)
 |--------------------------------------------------------------------------
 */
-Route::get('/', [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
-Route::get('/buku-tamu', [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
-Route::post('/buku-tamu', [LayananController::class, 'store'])->name('buku-tamu.store');
-Route::get('/layanan/persyaratan-perkara', [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
-Route::get('/layanan/persyaratan-perkara/{satker_vshort}', [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
+Route::get('/',                                                 [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
+Route::get('/buku-tamu',                                        [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
+Route::post('/buku-tamu',                                       [LayananController::class, 'store'])->name('buku-tamu.store');
+Route::get('/layanan/persyaratan-perkara',                      [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
+Route::get('/layanan/persyaratan-perkara/{satker_vshort}',      [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
 
 
 // Auth Routes
@@ -49,12 +49,13 @@ Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 */
 Route::middleware(['auth'])->group(function () {
 
-    // 1. ROUTE ACTION / API (Bebas dari CheckMenuAccess agar tidak terbentur redirect saat Submit Form)
+    // 1. ROUTE ACTION / API
     Route::prefix('system')->group(function () {
         Route::post('/reorder', [SystemController::class, 'reorder'])->name('system.reorder');
         Route::post('/menu/store', [SystemController::class, 'storeMenu'])->name('system.menu.store');
         Route::post('/submenu/store', [SystemController::class, 'storeSubmenu'])->name('system.submenu.store');
-        Route::delete('/menu/{id}', [SystemController::class, 'destroyMenu'])->name('system.menu.destroy');           Route::post('/access/toggle-menu', [SystemController::class, 'toggleMenuAccess'])->name('system.access.toggle-menu');
+        Route::delete('/menu/{id}', [SystemController::class, 'destroyMenu'])->name('system.menu.destroy');
+        Route::post('/access/toggle-menu', [SystemController::class, 'toggleMenuAccess'])->name('system.access.toggle-menu');
         Route::post('/access/toggle-submenu', [SystemController::class, 'toggleSubmenuAccess'])->name('system.access.toggle-submenu');
     });
 
@@ -65,7 +66,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/syarat-perkara/{id}/approve', [SyaratPerkaraController::class, 'approve'])->name('ptsp.syarat-perkara.approve');
         Route::post('/syarat-perkara/toggle-status', [SyaratPerkaraController::class, 'toggleStatus'])->name('ptsp.syarat-perkara.toggle-status');
         
-        // PERBAIKAN: Ditambahkan awalan 'ptsp.' pada nama route
+        // ACTION STORE/UPDATE PTSP
+        Route::put('/profil-ptsp/{satker_id}', [SyaratPerkaraController::class, 'updatePtspDaerah'])->name('ptsp.profil-ptsp.update');
+
         Route::post('/syarat-perkara/jenis-perkara/store', [SyaratPerkaraController::class, 'storeJenisPerkara'])->name('ptsp.syarat-perkara.store-jenis');
         Route::delete('/syarat-perkara/jenis-perkara/{jenisPerkaraId}', [SyaratPerkaraController::class, 'destroyJenisPerkara'])->name('ptsp.syarat-perkara.destroy-jenis');
     });
@@ -95,7 +98,10 @@ Route::middleware(['auth'])->group(function () {
         // PTSP / Informasi & Pengaduan Group
         Route::prefix('ptsp')->group(function () {
             Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'index'])->name('ptsp.syarat-perkara.index');
-            Route::get('/syarat-perkara/edit', [SyaratPerkaraController::class, 'edit'])->name('ptsp.syarat-perkara.edit');            
+            Route::get('/syarat-perkara/edit', [SyaratPerkaraController::class, 'edit'])->name('ptsp.syarat-perkara.edit');
+            
+            // HALAMAN PROFIL / PENGATURAN PTSP (MENU BARU)
+            Route::get('/profil-ptsp', [SyaratPerkaraController::class, 'ptspDaerah'])->name('ptsp.profil-ptsp.index');
         });
 
     });

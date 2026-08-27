@@ -28,53 +28,55 @@ class MenuSeeder extends Seeder
 
         if (!$superAdminRole) return;
 
-        // ==========================================
-        // 1. MENU UTAMA: SYSTEM (Hanya Superadmin)
-        // ==========================================
-        $systemMenu = Menu::create([
+        // ==========================================================
+        // 1. MENU UTAMA: INFORMASI & PENGADUAN (Order: 1, Semua Role)
+        // ==========================================================
+        $informasiMenu = Menu::create([
             'id'          => (string) Str::uuid(),
-            'name'        => 'System',
-            'icon'        => 'fa-solid fa-gear',
+            'name'        => 'Informasi & Pengaduan',
+            'icon'        => 'fa-solid fa-circle-info',
             'url'         => null,
             'is_dropdown' => true,
             'is_active'   => true,
             'order'       => 1,
         ]);
 
-        MenuAccess::create([
-            'id'      => (string) Str::uuid(),
-            'role_id' => $superAdminRole->id,
-            'menu_id' => $systemMenu->id,
-        ]);
+        // Berikan akses Menu Informasi & Pengaduan ke SELURUH Role
+        foreach ($allRoles as $role) {
+            MenuAccess::create([
+                'id'      => (string) Str::uuid(),
+                'role_id' => $role->id,
+                'menu_id' => $informasiMenu->id,
+            ]);
+        }
 
-        $systemSubmenus = [
-            ['submenu' => 'Menu', 'url' => 'system/menu', 'order' => 1],
-            ['submenu' => 'Submenu', 'url' => 'system/submenu', 'order' => 2],
-            ['submenu' => 'Daftar Satker', 'url' => 'system/satker', 'order' => 3],
-            ['submenu' => 'Daftar Pengguna', 'url' => 'system/users', 'order' => 4],
-            ['submenu' => 'Hak Akses', 'url' => 'system/access', 'order' => 5], // Submenu Hak Akses Ditambahkan
+        $informasiSubmenus = [
+            ['submenu' => 'Syarat Perkara', 'url' => 'ptsp/syarat-perkara', 'order' => 1],
+            ['submenu' => 'Pengaturan PTSP', 'url' => 'ptsp/profil-ptsp', 'order' => 2], // Submenu PTSP Baru
         ];
 
-        foreach ($systemSubmenus as $sub) {
+        foreach ($informasiSubmenus as $sub) {
             $createdSub = Submenu::create([
                 'id'      => (string) Str::uuid(),
-                'menu_id' => $systemMenu->id,
+                'menu_id' => $informasiMenu->id,
                 'submenu' => $sub['submenu'],
                 'url'     => $sub['url'],
                 'order'   => $sub['order'],
             ]);
 
-            // Akses submenu System hanya diberikan ke Superadmin
-            SubmenuAccess::create([
-                'id'         => (string) Str::uuid(),
-                'role_id'    => $superAdminRole->id,
-                'submenu_id' => $createdSub->id,
-            ]);
+            // Berikan akses Submenu ke SELURUH Role
+            foreach ($allRoles as $role) {
+                SubmenuAccess::create([
+                    'id'         => (string) Str::uuid(),
+                    'role_id'    => $role->id,
+                    'submenu_id' => $createdSub->id,
+                ]);
+            }
         }
 
-        // ==========================================
-        // 2. MENU UTAMA: PENGGUNA (Akses Semua Role)
-        // ==========================================
+        // ==========================================================
+        // 2. MENU UTAMA: PENGGUNA (Order: 2, Semua Role)
+        // ==========================================================
         $penggunaMenu = Menu::create([
             'id'          => (string) Str::uuid(),
             'name'        => 'Pengguna',
@@ -118,49 +120,48 @@ class MenuSeeder extends Seeder
             }
         }
 
-        // ==========================================
-        // 3. MENU UTAMA: INFORMASI & PENGADUAN (Akses Semua Role)
-        // ==========================================
-        $informasiMenu = Menu::create([
+        // ==========================================================
+        // 3. MENU UTAMA: SYSTEM (Order: 3, Hanya Superadmin)
+        // ==========================================================
+        $systemMenu = Menu::create([
             'id'          => (string) Str::uuid(),
-            'name'        => 'Informasi & Pengaduan',
-            'icon'        => 'fa-solid fa-circle-info',
+            'name'        => 'System',
+            'icon'        => 'fa-solid fa-gear',
             'url'         => null,
             'is_dropdown' => true,
             'is_active'   => true,
             'order'       => 3,
         ]);
 
-        // Berikan akses Menu Informasi & Pengaduan ke SELURUH Role
-        foreach ($allRoles as $role) {
-            MenuAccess::create([
-                'id'      => (string) Str::uuid(),
-                'role_id' => $role->id,
-                'menu_id' => $informasiMenu->id,
-            ]);
-        }
+        MenuAccess::create([
+            'id'      => (string) Str::uuid(),
+            'role_id' => $superAdminRole->id,
+            'menu_id' => $systemMenu->id,
+        ]);
 
-        $informasiSubmenus = [
-            ['submenu' => 'Syarat Perkara', 'url' => 'ptsp/syarat-perkara', 'order' => 1],
+        $systemSubmenus = [
+            ['submenu' => 'Menu', 'url' => 'system/menu', 'order' => 1],
+            ['submenu' => 'Submenu', 'url' => 'system/submenu', 'order' => 2],
+            ['submenu' => 'Daftar Satker', 'url' => 'system/satker', 'order' => 3],
+            ['submenu' => 'Daftar Pengguna', 'url' => 'system/users', 'order' => 4],
+            ['submenu' => 'Hak Akses', 'url' => 'system/access', 'order' => 5],
         ];
 
-        foreach ($informasiSubmenus as $sub) {
+        foreach ($systemSubmenus as $sub) {
             $createdSub = Submenu::create([
                 'id'      => (string) Str::uuid(),
-                'menu_id' => $informasiMenu->id,
+                'menu_id' => $systemMenu->id,
                 'submenu' => $sub['submenu'],
                 'url'     => $sub['url'],
                 'order'   => $sub['order'],
             ]);
 
-            // Berikan akses Submenu ke SELURUH Role
-            foreach ($allRoles as $role) {
-                SubmenuAccess::create([
-                    'id'         => (string) Str::uuid(),
-                    'role_id'    => $role->id,
-                    'submenu_id' => $createdSub->id,
-                ]);
-            }
+            // Akses submenu System hanya diberikan ke Superadmin
+            SubmenuAccess::create([
+                'id'         => (string) Str::uuid(),
+                'role_id'    => $superAdminRole->id,
+                'submenu_id' => $createdSub->id,
+            ]);
         }
     }
 }

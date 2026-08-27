@@ -23,10 +23,10 @@
                 <div class="row g-3 align-items-center">
                     <div class="col-auto">
                         <div class="avatar avatar-xl bg-light rounded p-2 border flex-shrink-0" style="width: 80px; height: 80px;">
-                            @if($satker->logo && $satker->logo != 'logo.png')
-                                <img src="{{ asset('storage/' . $satker->logo) }}" class="w-100 h-100" style="object-fit: contain;">
+                            @if($satker->logo && file_exists(public_path('assets/images/satker/' . $satker->logo)))
+                                <img src="{{ asset('assets/images/satker/' . $satker->logo) }}" class="rounded w-100 h-100" style="object-fit: contain;">
                             @else
-                                <i class="fa-solid fa-landmark text-success fs-2 d-flex align-items-center justify-content-center h-100"></i>
+                                <i class="flaticon-381-home text-success"></i>
                             @endif
                         </div>
                     </div>

@@ -41,6 +41,32 @@
                 }
             }
 
+            function showCallDisabledAlert(namaSatker) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Layanan Telepon Tidak Aktif',
+                        text: 'Mohon maaf, perangkat audio / panggilan telepon di PTSP ' + namaSatker + ' sedang tidak aktif. Silakan gunakan layanan Pesan WhatsApp.',
+                        confirmButtonColor: '#047857'
+                    });
+                } else {
+                    alert('Layanan telepon di PTSP ' + namaSatker + ' sedang tidak aktif. Silakan gunakan Pesan WhatsApp.');
+                }
+            }
+
+            function showWaDisabledAlert(namaSatker) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Layanan WhatsApp Belum Siap',
+                        text: 'Mohon maaf, layanan pesan WhatsApp di PTSP ' + namaSatker + ' sedang mengalami kendala atau belum siap digunakan.',
+                        confirmButtonColor: '#047857'
+                    });
+                } else {
+                    alert('Layanan pesan WhatsApp di PTSP ' + namaSatker + ' sedang mengalami kendala.');
+                }
+            }
+
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.btn-wa-confirm');
                 

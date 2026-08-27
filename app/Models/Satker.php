@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+    use App\Models\PtspDaerah;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Satker extends Model
 {
@@ -46,5 +48,10 @@ class Satker extends Model
     public function users()
     {
         return $this->hasMany(User::class, 'satker_id', 'id');
+    }
+
+    public function ptspDaerah(): HasOne
+    {
+        return $this->hasOne(PtspDaerah::class, 'satker_id', 'id');
     }
 }

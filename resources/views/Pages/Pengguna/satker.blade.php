@@ -80,8 +80,8 @@
                                         <td class="py-2">
                                             <div class="d-flex align-items-center">
                                                 <div class="avatar avatar-sm me-2 rounded bg-light d-flex align-items-center justify-content-center text-success font-weight-bold border" style="width: 36px; height: 36px; min-width: 36px; font-size: 0.75rem;">
-                                                    @if($satker->logo && $satker->logo != 'logo.png')
-                                                        <img src="{{ asset('storage/' . $satker->logo) }}" class="rounded w-100 h-100" style="object-fit: contain;">
+                                                    @if($satker->logo && file_exists(public_path('assets/images/satker/' . $satker->logo)))
+                                                        <img src="{{ asset('assets/images/satker/' . $satker->logo) }}" class="rounded w-100 h-100" style="object-fit: contain;">
                                                     @else
                                                         <i class="flaticon-381-home text-success"></i>
                                                     @endif

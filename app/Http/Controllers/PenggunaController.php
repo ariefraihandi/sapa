@@ -108,12 +108,27 @@ class PenggunaController extends Controller
             'alamat'            => $request->alamat,
         ];
 
-        // Proses Upload Logo Satker
+        // Proses Upload Logo ke public/assets/images/satker
         if ($request->hasFile('logo')) {
-            if ($satker->logo && $satker->logo !== 'logo.png' && Storage::disk('public')->exists($satker->logo)) {
-                Storage::disk('public')->delete($satker->logo);
+            $destinationPath = public_path('assets/images/satker');
+
+            // Hapus logo lama jika ada (dan bukan default 'logo.png')
+            if ($satker->logo && $satker->logo !== 'logo.png') {
+                $oldFilePath = $destinationPath . '/' . $satker->logo;
+                if (file_exists($oldFilePath)) {
+                    @unlink($oldFilePath);
+                }
             }
-            $data['logo'] = $request->file('logo')->store('satker_logos', 'public');
+
+            // Generate nama file unik
+            $file = $request->file('logo');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+
+            // Pindahkan file fisik ke public/assets/images/satker
+            $file->move($destinationPath, $filename);
+
+            // Simpan hanya NAMA FILE ke database
+            $data['logo'] = $filename;
         }
 
         $satker->update($data);
