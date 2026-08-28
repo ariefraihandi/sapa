@@ -32,7 +32,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('ptsp.profil-ptsp.update', $item->id) }}" method="POST">
+            <form action="{{ route('ptsp.profil-ptsp.update', $satker->id) }}" method="POST">
                 @csrf
                 @method('PUT')
                 <div class="row g-3">

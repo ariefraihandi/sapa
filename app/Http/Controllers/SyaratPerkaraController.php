@@ -8,7 +8,9 @@ use App\Models\Satker;
 use App\Models\PtspDaerah;
 use App\Models\PengunjungPtsp;
 use Illuminate\Http\Request;
+use App\Models\Pengaduan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SyaratPerkaraController extends Controller
@@ -408,6 +410,62 @@ class SyaratPerkaraController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status berhasil diperbarui!'
+        ]);
+    }
+
+    public function indexPengaduan()
+    {
+        $user = Auth::user();
+        $query = Pengaduan::with('satker')->latest();
+
+        // Jika bukan Admin dan bukan satker Mahkamah Syar'iyah Aceh, batasi data hanya miliknya sendiri
+        if ($user->role !== 'admin') {
+            $satkerName = $user->satker->satker_name ?? '';
+            $isMsAceh = str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
+            
+            if (!$isMsAceh && $user->satker_id) {
+                $query->where('satker_id', $user->satker_id);
+            }
+        }
+
+        $pengaduan = $query->paginate(15);
+
+        return view('Pages.PTSP.pengaduan_index', compact('pengaduan'));
+    }
+
+    public function toggleTindakLanjutPengaduan(Request $request, $id)
+    {
+        $request->validate([
+            'catatan_tindak_lanjut' => 'required|string',
+            'file_tindak_lanjut'    => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120', // Maks 5MB
+        ]);
+
+        $pengaduan = Pengaduan::findOrFail($id);
+
+        $filePath = $pengaduan->file_tindak_lanjut;
+        if ($request->hasFile('file_tindak_lanjut')) {
+            // Hapus file lama jika ada
+            if ($filePath && Storage::disk('public')->exists($filePath)) {
+                Storage::disk('public')->delete($filePath);
+            }
+            $filePath = $request->file('file_tindak_lanjut')->store('tindak_lanjut_pengaduan', 'public');
+        }
+
+        $pengaduan->update([
+            'is_tindak_lanjut'      => true,
+            'catatan_tindak_lanjut' => $request->catatan_tindak_lanjut,
+            'file_tindak_lanjut'    => $filePath,
+            'tgl_tindak_lanjut'     => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tindak lanjut pengaduan berhasil disimpan.',
+            'data'    => [
+                'catatan'  => $pengaduan->catatan_tindak_lanjut,
+                'file_url' => $filePath ? asset('storage/' . $filePath) : null,
+                'tgl'      => $pengaduan->tgl_tindak_lanjut->format('d M Y - H:i')
+            ]
         ]);
     }
 }

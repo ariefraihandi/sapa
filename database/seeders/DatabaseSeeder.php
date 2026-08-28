@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             MenuSeeder::class,         // 4. Buat Menu, Submenu, & Access (butuh role_id dari Satker)
             JenisPerkaraSeeder::class, // 5. Buat Master Jenis Perkara (Master UUID Perkara)
             SyaratPerkaraSeeder::class,// 6. Buat Syarat Perkara (butuh satker_id & jenis_perkara_id)
+            PekerjaanSeeder::class,    // 7. Buat Master Data Pekerjaan
         ]);
     }
 }

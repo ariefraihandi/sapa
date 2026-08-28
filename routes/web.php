@@ -13,12 +13,15 @@ use App\Http\Middleware\CheckMenuAccess;
 | Public Routes (Akses Tanpa Login)
 |--------------------------------------------------------------------------
 */
-Route::get('/',                                                 [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
-Route::get('/buku-tamu',                                        [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
-Route::post('/buku-tamu',                                       [LayananController::class, 'store'])->name('buku-tamu.store');
-Route::get('/layanan/persyaratan-perkara',                      [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
-Route::get('/layanan/persyaratan-perkara/{satker_vshort}',      [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
+Route::get('/', [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
+Route::get('/buku-tamu', [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
+Route::post('/buku-tamu', [LayananController::class, 'store'])->name('buku-tamu.store');
+Route::get('/layanan/persyaratan-perkara', [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
+Route::get('/layanan/persyaratan-perkara/{satker_vshort}', [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
 
+// Route AJAX Store Publik (LayananController)
+Route::post('/layanan/pengunjung/store', [LayananController::class, 'storePengunjung'])->name('public.pengunjung.store');
+Route::post('/layanan/pengaduan/store', [LayananController::class, 'storePengaduan'])->name('public.pengaduan.store');
 
 // Auth Routes
 Route::get('/auth', [AuthController::class, 'showAuthForm'])->name('login');
@@ -26,8 +29,6 @@ Route::post('/login', [AuthController::class, 'authenticate'])->name('login.proc
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Public Layanan & Informasi Masyarakat
-// Route::get('/layanan/', [SyaratPerkaraController::class, 'publicIndex'])->name('public.syarat-perkara');
-
 Route::prefix('layanan')->group(function () {
     Route::get('/validasi-akta', fn() => abort(503));
     Route::get('/legalisir-akta', fn() => abort(503));
@@ -37,7 +38,6 @@ Route::prefix('layanan')->group(function () {
 
 // View Prototypes
 Route::get('/dokumen', function () { return view('Pages.Dokumen.index'); });
-// Route::get('/layanan', function () { return view('Pages.Layanan.persyaratan'); });
 Route::get('/cekberkas', function () { return view('Pages.Layanan.cek-berkas'); });
 Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 
@@ -49,7 +49,7 @@ Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 */
 Route::middleware(['auth'])->group(function () {
 
-    // 1. ROUTE ACTION / API
+    // 1. ROUTE ACTION / API (Tanpa CheckMenuAccess agar AJAX lancar)
     Route::prefix('system')->group(function () {
         Route::post('/reorder', [SystemController::class, 'reorder'])->name('system.reorder');
         Route::post('/menu/store', [SystemController::class, 'storeMenu'])->name('system.menu.store');
@@ -66,11 +66,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/syarat-perkara/{id}/approve', [SyaratPerkaraController::class, 'approve'])->name('ptsp.syarat-perkara.approve');
         Route::post('/syarat-perkara/toggle-status', [SyaratPerkaraController::class, 'toggleStatus'])->name('ptsp.syarat-perkara.toggle-status');
         
-        // ACTION STORE/UPDATE PTSP
+        // Action Store / Update PTSP
         Route::put('/profil-ptsp/{satker_id}', [SyaratPerkaraController::class, 'updatePtspDaerah'])->name('ptsp.profil-ptsp.update');
-
         Route::post('/syarat-perkara/jenis-perkara/store', [SyaratPerkaraController::class, 'storeJenisPerkara'])->name('ptsp.syarat-perkara.store-jenis');
         Route::delete('/syarat-perkara/jenis-perkara/{jenisPerkaraId}', [SyaratPerkaraController::class, 'destroyJenisPerkara'])->name('ptsp.syarat-perkara.destroy-jenis');
+
+        // Action AJAX Status Panel Internal (SyaratPerkaraController)
+        Route::post('/pengunjung/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjut'])->name('ptsp.pengunjung.tindak-lanjut');
+        Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
     });
 
 
@@ -95,12 +98,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/access', [SystemController::class, 'access'])->name('system.access');
         });
 
-        // PTSP / Informasi & Pengaduan Group
+        // PTSP / Informasi & Pengaduan Group (SyaratPerkaraController)
         Route::prefix('ptsp')->group(function () {
+            Route::get('/pengunjung', [SyaratPerkaraController::class, 'indexPengunjung'])->name('ptsp.pengunjung.index');
+            Route::get('/pengaduan', [SyaratPerkaraController::class, 'indexPengaduan'])->name('ptsp.pengaduan.index');
             Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'index'])->name('ptsp.syarat-perkara.index');
             Route::get('/syarat-perkara/edit', [SyaratPerkaraController::class, 'edit'])->name('ptsp.syarat-perkara.edit');
-            
-            // HALAMAN PROFIL / PENGATURAN PTSP (MENU BARU)
             Route::get('/profil-ptsp', [SyaratPerkaraController::class, 'ptspDaerah'])->name('ptsp.profil-ptsp.index');
         });
 

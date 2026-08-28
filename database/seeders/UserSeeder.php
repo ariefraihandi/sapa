@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
                     'jabatan'   => 'System Developer',
                     'email'     => 'admin@ms-aceh.go.id',
                     'phone'     => '081234567890',
-                    'password'  => Hash::make('12345678'),
+                    'password'  => Hash::make('Januari26#'),
                     'is_active' => true,
                 ]);
             }

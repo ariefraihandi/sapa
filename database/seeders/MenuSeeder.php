@@ -50,9 +50,12 @@ class MenuSeeder extends Seeder
             ]);
         }
 
+        // PENYESUAIAN SUBMENU (Daftar Pengunjung di Urutan 1)
         $informasiSubmenus = [
-            ['submenu' => 'Syarat Perkara', 'url' => 'ptsp/syarat-perkara', 'order' => 1],
-            ['submenu' => 'Pengaturan PTSP', 'url' => 'ptsp/profil-ptsp', 'order' => 2], // Submenu PTSP Baru
+            ['submenu' => 'Daftar Pengunjung', 'url' => 'ptsp/pengunjung', 'order' => 1],
+            ['submenu' => 'Daftar Pengaduan',  'url' => 'ptsp/pengaduan',  'order' => 2], // Menu Baru di Bawah Pengunjung
+            ['submenu' => 'Syarat Perkara',    'url' => 'ptsp/syarat-perkara', 'order' => 3],
+            ['submenu' => 'Pengaturan PTSP',  'url' => 'ptsp/profil-ptsp', 'order' => 4],
         ];
 
         foreach ($informasiSubmenus as $sub) {
