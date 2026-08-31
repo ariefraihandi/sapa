@@ -40,8 +40,15 @@ class AuthController extends Controller
             Auth::login($user);
             $request->session()->regenerate();
 
-            // Redirect ke system/menu setelah login berhasil
-            return redirect()->intended('pengguna/profile')->with('success', 'Selamat datang kembali, ' . $user->name);
+            // 4. Cek apakah user masih menggunakan password default '12345678'
+            if (Hash::check('12345678', $user->password)) {
+                return redirect()->route('profile')
+                    ->with('warning', 'Harap ubah password lama anda demi menjaga keamanan!');
+            }
+
+            // 5. Jika password sudah diubah (bukan 12345678), arahkan ke Dashboard
+            return redirect()->intended(route('dashboard'))
+                ->with('success', 'Selamat datang kembali, ' . $user->name);
         }
 
         return redirect()->back()->with('error', 'Username atau password yang Anda masukkan salah!');

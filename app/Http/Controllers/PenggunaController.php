@@ -7,6 +7,7 @@ use App\Models\Satker;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class PenggunaController extends Controller
@@ -134,5 +135,35 @@ class PenggunaController extends Controller
         $satker->update($data);
 
         return redirect()->back()->with('success', 'Data Satuan Kerja berhasil diperbarui!');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password'  => 'required',
+            'new_password'      => 'required|min:8|different:current_password',
+            'confirm_password'  => 'required|same:new_password',
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'new_password.required'     => 'Password baru wajib diisi.',
+            'new_password.min'          => 'Password baru minimal 8 karakter.',
+            'new_password.different'    => 'Password baru harus berbeda dari password lama.',
+            'confirm_password.required' => 'Konfirmasi password wajib diisi.',
+            'confirm_password.same'     => 'Konfirmasi password tidak cocok dengan password baru.',
+        ]);
+
+        $user = Auth::user();
+
+        // Cek password lama
+        if (!Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->withErrors(['current_password' => 'Password saat ini tidak sesuai.']);
+        }
+
+        // Update password
+        User::where('id', $user->id)->update([
+            'password' => Hash::make($request->new_password)
+        ]);
+
+        return redirect()->back()->with('success', 'Password berhasil diperbarui.');
     }
 }

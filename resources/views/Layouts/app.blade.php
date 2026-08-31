@@ -17,8 +17,8 @@
         
         @include('Layouts.Partials.sidebar')
 
-        <div class="content-body">
-            @yield('content')
+        <div class="content-body">            
+            @yield('content')            
         </div>
 
         @include('Layouts.Partials.footer')

@@ -1,7 +1,7 @@
 @extends('Layouts.app')
 
 @section('content')
-<div class="container-fluid px-4 py-3">
+<div class="container-fluid">
     <!-- HEADER HALAMAN -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>

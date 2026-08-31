@@ -1,7 +1,7 @@
 @extends('Layouts.app')
 
 @section('content')
-<div class="container-fluid px-4 py-3" style="max-width: 900px; margin: 0 auto;">
+<div class="container-fluid">
     
     <!-- HEADER PROFIL SATKER -->
     <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #047857 0%, #10b981 100%); color: white;">

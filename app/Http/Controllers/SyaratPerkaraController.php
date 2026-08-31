@@ -124,6 +124,25 @@ class SyaratPerkaraController extends Controller
     /**
      * Halaman Edit
      */
+
+    public function updateJenisPerkara(Request $request, $id)
+    {
+        $request->validate([
+            'kategori'     => 'required|string',
+            'nama_layanan' => 'required|string|max:255',
+            'deskripsi'    => 'nullable|string',
+        ]);
+
+        $jenisPerkara = JenisPerkara::findOrFail($id);
+        $jenisPerkara->update([
+            'kategori'     => $request->kategori,
+            'nama_layanan' => $request->nama_layanan,
+            'deskripsi'    => $request->deskripsi,
+        ]);
+
+        return redirect()->back()->with('success', 'Master Jenis Perkara berhasil diperbarui.');
+    }
+
     public function edit(Request $request)
     {
         $id = $request->query('id');
@@ -385,18 +404,58 @@ class SyaratPerkaraController extends Controller
     public function indexPengunjung()
     {
         $user = Auth::user();
+        $title = 'Daftar Pengunjung';
 
         // Query awal dengan relasi satker
         $query = PengunjungPtsp::with('satker')->latest();
 
-        // Jika bukan Admin MS Aceh (misal: role 'daerah' atau punya satker_id khusus)
-        if ($user->role !== 'admin' && $user->satker_id) {
-            $query->where('satker_id', $user->satker_id);
+        // Cek apakah user berasal dari MS Aceh atau ber-role admin
+        if ($user->role !== 'admin') {
+            $satkerName = $user->satker->satker_name ?? '';
+            $isMsAceh = str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
+
+            // Jika bukan MS Aceh dan bukan Admin, filter hanya satker miliknya sendiri
+            if (!$isMsAceh && $user->satker_id) {
+                $query->where('satker_id', $user->satker_id);
+            }
         }
 
         $pengunjung = $query->paginate(15);
 
-        return view('Pages.PTSP.pengunjung_index', compact('pengunjung'));
+        return view('Pages.PTSP.pengunjung_index', compact('pengunjung', 'title'));
+    }
+
+    public function updatePengunjung(Request $request, $id)
+    {
+        $request->validate([
+            'nama_responden' => 'required|string|max:255',
+            'no_hp'          => 'required|string|max:20',
+            'jenis_kelamin'  => 'required|in:L,P',
+            'pekerjaan'      => 'nullable|string|max:100',
+            'nik'            => 'nullable|string|max:16',
+            'keperluan'      => 'nullable|string',
+        ]);
+
+        $pengunjung = PengunjungPtsp::findOrFail($id);
+        $pengunjung->update([
+            'nama_responden' => $request->nama_responden,
+            'no_hp'          => $request->no_hp,
+            'jenis_kelamin'  => $request->jenis_kelamin,
+            'pekerjaan'      => $request->pekerjaan,
+            'nik'            => $request->nik,
+            'keperluan'      => $request->keperluan,
+        ]);
+
+        return redirect()->back()->with('success', 'Data pengunjung berhasil diperbarui.');
+    }
+
+    // 2. Hapus Data Pengunjung PTSP
+    public function destroyPengunjung($id)
+    {
+        $pengunjung = PengunjungPtsp::findOrFail($id);
+        $pengunjung->delete();
+
+        return redirect()->back()->with('success', 'Data pengunjung berhasil dihapus.');
     }
 
     // 2. Action Update Status Tindak Lanjut via WA Click
@@ -417,7 +476,7 @@ class SyaratPerkaraController extends Controller
     {
         $user = Auth::user();
         $query = Pengaduan::with('satker')->latest();
-
+        $title = 'Daftar Pengaduan';
         // Jika bukan Admin dan bukan satker Mahkamah Syar'iyah Aceh, batasi data hanya miliknya sendiri
         if ($user->role !== 'admin') {
             $satkerName = $user->satker->satker_name ?? '';
@@ -430,7 +489,7 @@ class SyaratPerkaraController extends Controller
 
         $pengaduan = $query->paginate(15);
 
-        return view('Pages.PTSP.pengaduan_index', compact('pengaduan'));
+        return view('Pages.PTSP.pengaduan_index', compact('pengaduan', 'title'));
     }
 
     public function toggleTindakLanjutPengaduan(Request $request, $id)

@@ -45,42 +45,51 @@
     <!-- Data Table Card -->
     <div class="row">
         <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div class="d-flex align-items-center">
-                        <h4 class="card-title m-0 me-3"><i class="fa-solid fa-list-check me-2 text-success"></i>Daftar Persyaratan Perkara</h4>
+            <div class="card shadow-sm border-0" style="border-radius: 16px;">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-white py-3 border-bottom">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                      
                         
-                        {{-- Tombol Tambah Jenis Perkara (Dapat Diakses Semua Satker) --}}
+                        <!-- Tombol Tambah Jenis Perkara -->
                         <button type="button" class="btn btn-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAddJenisPerkara">
                             <i class="fa-solid fa-plus me-1"></i> Tambah Jenis Perkara
                         </button>
+                           <div class="input-group input-group-sm" style="width: 260px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" id="customSearchInput" class="form-control border-start-0 bg-light" placeholder="Cari perkara / kategori..." onkeyup="filterSyaratTable()">
+                        </div>
                     </div>
                     
-                    {{-- Filter Khusus Superadmin MS Aceh --}}
-                    @if($isMsAceh)
-                        <form method="GET" action="{{ route('ptsp.syarat-perkara.index') }}" class="d-flex align-items-center">
-                            <label class="me-2 fw-bold text-nowrap mb-0">Pilih Satker:</label>
-                            <select name="satker_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                                <option value="">-- Semua Satker --</option>
-                                @foreach($satkers ?? [] as $satker)
-                                    <option value="{{ $satker->id }}" {{ request('satker_id') == $satker->id ? 'selected' : '' }}>
-                                        {{ $satker->satker_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </form>
-                    @else
-                        <span class="badge bg-success fs-14">
-                            <i class="fa-solid fa-building me-1"></i> {{ Auth::user()->satker ? Auth::user()->satker->satker_name : 'Satker Daerah' }}
-                        </span>
-                    @endif
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <!-- Input Live Search Instant -->
+                     
+
+                        <!-- Filter Khusus Superadmin MS Aceh -->
+                        @if($isMsAceh)
+                            <form method="GET" action="{{ route('ptsp.syarat-perkara.index') }}" class="d-flex align-items-center">
+                                <label class="me-2 fw-bold text-nowrap mb-0 small">Pilih Satker:</label>
+                                <select name="satker_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">-- Semua Satker --</option>
+                                    @foreach($satkers ?? [] as $satker)
+                                        <option value="{{ $satker->id }}" {{ request('satker_id') == $satker->id ? 'selected' : '' }}>
+                                            {{ $satker->satker_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        @else
+                            <span class="badge bg-success fs-14">
+                                <i class="fa-solid fa-building me-1"></i> {{ Auth::user()->satker ? Auth::user()->satker->satker_name : 'Satker Daerah' }}
+                            </span>
+                        @endif
+                    </div>
                 </div>
 
-                <div class="card-body">
+                <div class="card-body p-3">
                     <div class="table-responsive">
-                        <table id="tableSyaratPerkara" class="table table-hover table-striped display min-w850 align-middle">
-                            <thead>
-                                <tr class="bg-light text-center">
+                        <table id="tableSyaratPerkara" class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr class="text-center">
                                     <th width="5%">No</th>
                                     @if($isMsAceh)
                                         <th>Satker</th>
@@ -88,25 +97,25 @@
                                     <th>Kategori</th>
                                     <th>Nama Perkara</th>
                                     <th class="text-center" width="22%">Status Penayangan & Dokumen</th>                                    
-                                    <th class="text-center" width="10%">Aksi</th>
+                                    <th class="text-center" width="12%">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($syaratPerkara as $index => $item)
-                                    <tr>
-                                        <td class="text-center">{{ $loop->iteration }}</td>
+                                    <tr class="syarat-row">
+                                        <td class="text-center col-no">{{ $loop->iteration }}</td>
                                         @if($isMsAceh)
-                                            <td><span class="fw-bold text-dark">{{ $item->satker->satker_short_name ?? $item->satker->satker_name ?? '-' }}</span></td>
+                                            <td class="col-satker"><span class="fw-bold text-dark">{{ $item->satker->satker_short_name ?? $item->satker->satker_name ?? '-' }}</span></td>
                                         @endif
                                         
-                                        <td>
+                                        <td class="col-kategori">
                                             <span class="badge" style="background-color: #e2e8f0; color: #1e293b; font-weight: 600; padding: 6px 10px;">
                                                 {{ $item->jenisPerkara->kategori ?? 'Umum' }}
                                             </span>
                                         </td>
 
-                                        <td>
-                                            <strong class="text-primary">{{ $item->jenisPerkara->nama_layanan ?? '-' }}</strong>
+                                        <td class="col-perkara">
+                                            <strong class="text-primary d-block">{{ $item->jenisPerkara->nama_layanan ?? '-' }}</strong>
                                             <small class="d-block text-muted">{{ Str::limit($item->jenisPerkara->deskripsi ?? '', 55) }}</small>
                                         </td>
 
@@ -135,18 +144,25 @@
 
                                         <td class="text-center">
                                             <div class="dropdown">
-                                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle px-3" data-bs-toggle="dropdown">
                                                     Aksi
                                                 </button>
-                                                <div class="dropdown-menu dropdown-menu-end">
+                                                <div class="dropdown-menu dropdown-menu-end shadow border-0">
                                                     <a class="dropdown-item text-primary" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalDetail{{ $loop->index }}">
                                                         <i class="fa-solid fa-eye me-2"></i> Cek Syarat
                                                     </a>
                                                     <a class="dropdown-item text-warning" href="{{ route('ptsp.syarat-perkara.edit', ['id' => $item->id]) }}">
-                                                        <i class="fa-solid fa-pen-to-square me-2"></i> Kelola Syarat
+                                                        <i class="fa-solid fa-list-check me-2"></i> Kelola Syarat
                                                     </a>
                                                     
-                                                    {{-- HANYA ADMINISTRATOR / SUPERADMIN YANG BISA TAMPILKAN TOMBOL HAPUS --}}
+                                                    <!-- Edit Master Jenis Perkara (Khusus MS Aceh / Superadmin) -->
+                                                    @if($isMsAceh)
+                                                        <a class="dropdown-item text-info" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalEditJenis{{ $loop->index }}">
+                                                            <i class="fa-solid fa-pen-to-square me-2"></i> Edit Jenis Perkara
+                                                        </a>
+                                                    @endif
+
+                                                    <!-- Hapus Jenis Perkara -->
                                                     @if(strtolower(Auth::user()->role->role_name ?? Auth::user()->role ?? '') === 'administrator' || $isMsAceh)
                                                         <div class="dropdown-divider"></div>
                                                         <a class="dropdown-item text-danger" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalDelete{{ $loop->index }}">
@@ -158,9 +174,9 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="{{ $isMsAceh ? 7 : 6 }}" class="text-center py-4 text-muted">
-                                            <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                    <tr id="emptyRow">
+                                        <td colspan="{{ $isMsAceh ? 6 : 5 }}" class="text-center py-5 text-muted">
+                                            <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50 d-block"></i>
                                             Tidak ada data persyaratan perkara yang ditemukan.
                                         </td>
                                     </tr>
@@ -174,7 +190,7 @@
     </div>
 </div>
 
-<!-- ========================== MODAL DETAIL & HAPUS (DI LUAR TABEL) ========================== -->
+<!-- ========================== MODAL DETAIL, EDIT & HAPUS ========================== -->
 @foreach($syaratPerkara as $index => $item)
     <!-- MODAL DETAIL -->
     <div class="modal fade" id="modalDetail{{ $loop->index }}" tabindex="-1" aria-hidden="true">
@@ -242,7 +258,51 @@
         </div>
     </div>
 
-    <!-- MODAL HAPUS JENIS PERKARA (HANYA UNTUK ADMINISTRATOR) -->
+    <!-- MODAL EDIT JENIS PERKARA (KHUSUS MS ACEH / SUPERADMIN) -->
+    @if($isMsAceh && $item->jenisPerkara)
+        <div class="modal fade" id="modalEditJenis{{ $loop->index }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content border-0 shadow" action="{{ route('ptsp.syarat-perkara.update-jenis', $item->jenisPerkara->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title text-white"><i class="fa-solid fa-pen-to-square me-2"></i>Edit Master Jenis Perkara</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body text-start">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kategori Perkara <span class="text-danger">*</span></label>
+                            <select name="kategori" class="form-select" required>
+                                <option value="Perkawinan" {{ $item->jenisPerkara->kategori == 'Perkawinan' ? 'selected' : '' }}>Perkawinan</option>
+                                <option value="Kewarisan & Harta" {{ $item->jenisPerkara->kategori == 'Kewarisan & Harta' ? 'selected' : '' }}>Kewarisan & Harta</option>
+                                <option value="Ekonomi Syariah" {{ $item->jenisPerkara->kategori == 'Ekonomi Syariah' ? 'selected' : '' }}>Ekonomi Syariah</option>
+                                <option value="Lainnya" {{ $item->jenisPerkara->kategori == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Layanan / Perkara <span class="text-danger">*</span></label>
+                            <input type="text" name="nama_layanan" class="form-control" value="{{ $item->jenisPerkara->nama_layanan }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Deskripsi Layanan</label>
+                            <textarea name="deskripsi" class="form-control" rows="3">{{ $item->jenisPerkara->deskripsi }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-info text-white"><i class="fa-solid fa-save me-1"></i> Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- MODAL HAPUS JENIS PERKARA -->
     @if(strtolower(Auth::user()->role->role_name ?? Auth::user()->role ?? '') === 'administrator' || $isMsAceh)
         <div class="modal fade" id="modalDelete{{ $loop->index }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -255,7 +315,7 @@
                     </div>
                     <div class="modal-body text-center py-4">
                         <i class="fa-solid fa-trash text-danger fa-3x mb-3"></i>
-                        <h5>Apakah Anda yakin ingin menghapus seluruh Jenis Perkara ini?</h5>
+                        <h5>Apakah Anda yakin ingin menghapus Jenis Perkara ini?</h5>
                         <p class="text-muted mb-0"><strong>{{ $item->jenisPerkara->nama_layanan ?? '-' }}</strong></p>
                         <p class="text-danger small mb-0 mt-2">Tindakan ini akan menghapus jenis perkara beserta <b>semua dokumen syarat</b> yang ada di dalamnya!</p>
                     </div>
@@ -362,5 +422,21 @@
             }
         });
     });
+</script>
+
+<script>
+function filterSyaratTable() {
+    const input = document.getElementById('customSearchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.syarat-row');
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        if (text.includes(input)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
 </script>
 @endpush
