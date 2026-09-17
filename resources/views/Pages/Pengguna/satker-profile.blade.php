@@ -50,7 +50,7 @@
         <!-- Detail Informasi Satker -->
         <div class="row g-3">
             <div class="col-xl-12">
-                <div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0 mb-3">
                     <div class="card-header bg-white py-2 px-3 border-bottom">
                         <h6 class="card-title text-success mb-0 fw-bold">
                             <i class="fa-solid fa-building me-2"></i> Detail Kontak & Instansi
@@ -88,60 +88,112 @@
                             </div>
                         </div>
                     </div>
+                </div>                
+            </div>
+            <div class="col-xl-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-success mb-0 fw-bold">
+                                <i class="fa-solid fa-file-lines me-2"></i> Pengaturan Kop Surat (Header Dokumen)
+                            </h6>
+                            <small class="text-muted">Gambar kop surat ini akan otomatis digunakan sebagai header berkas cetak PDF.</small>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row align-items-center g-4">
+                            <!-- AREA PREVIEW KOP SURAT -->
+                            <div class="col-lg-8">
+                                <label class="form-label fw-bold text-dark mb-2">Preview Kop Surat Saat Ini:</label>
+                                <div class="p-2 border rounded bg-light text-center overflow-hidden" style="min-height: 140px; display: flex; align-items: center; justify-content: center;">
+                                    @if(!empty($satker->kop_surat) && file_exists(public_path('assets/images/satker/' . $satker->kop_surat)))
+                                        <img src="{{ asset('assets/images/satker/' . $satker->kop_surat) }}" 
+                                            class="img-fluid rounded shadow-sm" 
+                                            style="max-height: 140px; width: 100%; object-fit: contain;" 
+                                            alt="Kop Surat">
+                                    @else
+                                        <div class="py-4 text-muted">
+                                            <i class="fa-regular fa-image fa-3x mb-2 d-block text-secondary"></i>
+                                            <span class="small">Belum ada Kop Surat yang diunggah. Silakan upload file kop di samping.</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- FORM UPLOAD KOP SURAT -->
+                            <div class="col-lg-4">
+                                <form action="{{ route('pengguna.satker-profile.update-kop') }}" method="POST" enctype="multipart/form-data" class="p-3 border rounded bg-white shadow-sm">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="hidden" name="satker_id" value="{{ $satker->id }}">
+
+                                    <label class="form-label fw-bold text-dark small">Upload / Ganti Kop Surat</label>
+                                    <input type="file" name="kop_surat" class="form-control form-control-sm mb-2" accept="image/*" required>
+                                    <small class="text-muted d-block mb-3" style="font-size: 0.75rem;">
+                                        <i class="fa-solid fa-circle-info me-1"></i> Format: PNG/JPG, Maks. 2MB.
+                                    </small>
+                                    
+                                    <button type="submit" class="btn btn-sm btn-success text-white w-100" style="background-color: #0b6e39; border-color: #0b6e39;">
+                                        <i class="fa-solid fa-upload me-1"></i> Simpan Kop Surat
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-<!-- MODAL: EDIT SATKER -->
-<div class="modal fade" id="modalEditSatkerProfile" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white" style="background-color: #0b6e39;">
-                <h5 class="modal-title text-white mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Edit Data Satuan Kerja</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('pengguna.satker-profile.update') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                @method('PUT')
-                <div class="modal-body p-4 text-dark">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label font-weight-bold">Nama Satker Lengkap <span class="text-danger">*</span></label>
-                            <input type="text" name="satker_name" class="form-control form-control-sm" value="{{ $satker->satker_name }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label font-weight-bold">Singkatan <span class="text-danger">*</span></label>
-                            <input type="text" name="satker_short_name" class="form-control form-control-sm" value="{{ $satker->satker_short_name }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label font-weight-bold">Alamat Email</label>
-                            <input type="email" name="email" class="form-control form-control-sm" value="{{ $satker->email }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label font-weight-bold">Telepon Kantor</label>
-                            <input type="text" name="telepon" class="form-control form-control-sm" value="{{ $satker->telepon }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label font-weight-bold">WhatsApp PTSP</label>
-                            <input type="text" name="whatsapp" class="form-control form-control-sm" value="{{ $satker->whatsapp }}">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label font-weight-bold">Alamat Kantor</label>
-                            <textarea name="alamat" class="form-control form-control-sm" rows="2">{{ $satker->alamat }}</textarea>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label font-weight-bold">Logo Instansi (Opsional)</label>
-                            <input type="file" name="logo" class="form-control form-control-sm" accept="image/*">
+    <!-- MODAL: EDIT SATKER -->
+    <div class="modal fade" id="modalEditSatkerProfile" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header text-white" style="background-color: #0b6e39;">
+                    <h5 class="modal-title text-white mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Edit Data Satuan Kerja</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('pengguna.satker-profile.update') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-body p-4 text-dark">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label font-weight-bold">Nama Satker Lengkap <span class="text-danger">*</span></label>
+                                <input type="text" name="satker_name" class="form-control form-control-sm" value="{{ $satker->satker_name }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label font-weight-bold">Singkatan <span class="text-danger">*</span></label>
+                                <input type="text" name="satker_short_name" class="form-control form-control-sm" value="{{ $satker->satker_short_name }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label font-weight-bold">Alamat Email</label>
+                                <input type="email" name="email" class="form-control form-control-sm" value="{{ $satker->email }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label font-weight-bold">Telepon Kantor</label>
+                                <input type="text" name="telepon" class="form-control form-control-sm" value="{{ $satker->telepon }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label font-weight-bold">WhatsApp PTSP</label>
+                                <input type="text" name="whatsapp" class="form-control form-control-sm" value="{{ $satker->whatsapp }}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label font-weight-bold">Alamat Kantor</label>
+                                <textarea name="alamat" class="form-control form-control-sm" rows="2">{{ $satker->alamat }}</textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label font-weight-bold">Logo Instansi (Opsional)</label>
+                                <input type="file" name="logo" class="form-control form-control-sm" accept="image/*">
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-sm btn-success text-white" style="background-color: #0b6e39;">Simpan Perubahan</button>
-                </div>
-            </form>
+                    <div class="modal-footer bg-light py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-sm btn-success text-white" style="background-color: #0b6e39;">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 @endsection

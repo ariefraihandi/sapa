@@ -137,6 +137,50 @@ class PenggunaController extends Controller
         return redirect()->back()->with('success', 'Data Satuan Kerja berhasil diperbarui!');
     }
 
+    public function updateKopSurat(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->satker_id) {
+            return redirect()->back()->with('error', 'Akses ditolak. Akun Anda tidak terhubung dengan Satuan Kerja.');
+        }
+
+        $satker = Satker::findOrFail($user->satker_id);
+
+        $request->validate([
+            'kop_surat' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'kop_surat.required' => 'File kop surat wajib dipilih!',
+            'kop_surat.image'    => 'File harus berupa gambar!',
+            'kop_surat.mimes'    => 'Format gambar harus JPG, JPEG, PNG, atau WEBP!',
+            'kop_surat.max'      => 'Ukuran gambar maksimal 2MB!',
+        ]);
+
+        $destinationPath = public_path('assets/images/satker');
+
+        // Hapus kop surat lama jika ada
+        if ($satker->kop_surat) {
+            $oldFilePath = $destinationPath . '/' . $satker->kop_surat;
+            if (file_exists($oldFilePath)) {
+                @unlink($oldFilePath);
+            }
+        }
+
+        // Generate nama file unik
+        $file = $request->file('kop_surat');
+        $filename = 'kop_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+
+        // Pindahkan file ke public/assets/images/satker
+        $file->move($destinationPath, $filename);
+
+        // Update database
+        $satker->update([
+            'kop_surat' => $filename
+        ]);
+
+        return redirect()->back()->with('success', 'Kop Surat Satuan Kerja berhasil diperbarui!');
+    }
+
     public function updatePassword(Request $request)
     {
         $request->validate([

@@ -3,6 +3,8 @@
 
 @include('Layouts.Partials.head')
 
+@stack('styles')
+
 <body>
     <div id="preloader">
         <div class="sk-three-bounce">

@@ -9,6 +9,7 @@ use App\Models\PengunjungPtsp;
 use App\Models\Pekerjaan;
 use App\Models\Pengaduan;
 use Illuminate\Http\Request;
+use PDF;
 use Illuminate\Support\Facades\Auth;
 
 class LayananController extends Controller
@@ -56,6 +57,38 @@ class LayananController extends Controller
         });
 
         return view('Pages.Layanan.persyaratan', compact('daftarSatker'));
+    }
+
+    public function downloadPersyaratanPdf($satker_vshort, $jenis_perkara_id)
+    {
+        // 1. Ambil data Satker
+        $satker = Satker::where('satker_vshort', $satker_vshort)->firstOrFail();
+
+        // 2. Ambil data Jenis Perkara
+        $jenisPerkara = JenisPerkara::findOrFail($jenis_perkara_id);
+
+        // 3. Ambil daftar syarat dokumen spesifik untuk satker & jenis perkara ini
+        $dokumenList = SyaratPerkara::where('satker_id', $satker->id)
+                        ->where('jenis_perkara_id', $jenis_perkara_id)
+                        ->get();
+
+        // 4. Render ke PDF
+        $pdf = PDF::loadView('Pages.Layanan.pdf_persyaratan', [
+            'satker'       => $satker,
+            'jenisPerkara' => $jenisPerkara,
+            'dokumenList'  => $dokumenList
+        ], [], [
+            'format'        => 'A4',
+            'orientation'   => 'P',
+            'margin_left'   => 0,  // Kop menempel full ke kiri kertas
+            'margin_right'  => 0,  // Kop menempel full ke kanan kertas
+            'margin_top'    => 0,  // Kop menempel paling atas kertas
+            'margin_bottom' => 15,
+        ]);
+
+        $filename = 'Persyaratan_' . str_replace(' ', '_', $jenisPerkara->nama_layanan) . '_' . $satker->satker_vshort . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
     public function detailPersyaratanPerkara($satker_vshort)

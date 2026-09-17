@@ -1,5 +1,20 @@
 @extends('Layouts.app')
 
+@push('styles')
+    <style>
+        #profileTabs .nav-link {
+            color: #64748b !important;
+            border-bottom: 3px solid transparent !important;
+            transition: all 0.2s ease-in-out;
+        }
+        #profileTabs .nav-link.active {
+            color: #2bc155 !important;
+            background-color: transparent !important;
+            border-bottom: 3px solid #2bc155 !important;
+        }
+    </style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row align-items-center mb-3">
@@ -93,12 +108,14 @@
 
         <!-- Tab Filter -->
         <div class="card-footer py-0 px-3 bg-white border-top">
-            <ul class="nav nav-tabs border-0 gap-2" role="tablist">
+            <ul class="nav nav-tabs border-0 gap-2" id="profileTabs" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active text-success fw-bold py-2 border-0 border-bottom border-3 border-success" data-bs-toggle="tab" href="#overview">Ringkasan</a>
+                    <a class="nav-link active py-2 border-0 fw-bold" id="tab-overview" data-bs-toggle="tab" href="#overview" role="tab">
+                        Ringkasan
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-muted py-2 border-0 fw-bold" data-bs-toggle="tab" href="#settings">
+                    <a class="nav-link py-2 border-0 fw-bold" id="tab-settings" data-bs-toggle="tab" href="#settings" role="tab">
                         <i class="fa-solid fa-key me-1"></i> Pengaturan Keamanan
                     </a>
                 </li>
@@ -167,11 +184,11 @@
                         <div class="card-body p-3">
                             @if(Auth::user()->satker)
                                 <div class="d-flex align-items-center mb-3">
-                                    <div class="avatar avatar-md me-3 bg-light rounded p-2 border flex-shrink-0" style="width: 48px; height: 48px;">
-                                        @if(Auth::user()->satker->logo && Auth::user()->satker->logo != 'logo.png')
-                                            <img src="{{ asset('storage/' . Auth::user()->satker->logo) }}" class="w-100 h-100" style="object-fit: contain;">
+                                    <div class="avatar avatar-xl bg-light rounded p-2 border flex-shrink-0 me-3" style="width: 60px; height: 60px;">
+                                        @if(Auth::user()->satker->logo && Auth::user()->satker->logo != 'logo.png' && file_exists(public_path('assets/images/satker/' . Auth::user()->satker->logo)))
+                                            <img src="{{ asset('assets/images/satker/' . Auth::user()->satker->logo) }}" class="w-100 h-100" style="object-fit: contain;">
                                         @else
-                                            <i class="fa-solid fa-landmark text-success fs-5"></i>
+                                            <i class="fa-solid fa-landmark text-success fs-4"></i>
                                         @endif
                                     </div>
                                     <div>
@@ -326,7 +343,6 @@ document.addEventListener("DOMContentLoaded", function () {
         let isDiffValid   = newVal !== "" && newVal !== currentVal;
         let isMatchValid  = newVal !== "" && newVal === confirmVal;
 
-        // Validasi Rule 1: Minimal 8 Karakter
         if (isLengthValid) {
             ruleLength.className = "text-success fw-bold";
             ruleLength.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Minimal 8 Karakter';
@@ -335,7 +351,6 @@ document.addEventListener("DOMContentLoaded", function () {
             ruleLength.innerHTML = '<i class="fa-solid fa-circle-xmark me-1 text-danger"></i> Minimal 8 Karakter';
         }
 
-        // Validasi Rule 2: Berbeda dari Password Lama
         if (isDiffValid) {
             ruleDiff.className = "text-success fw-bold";
             ruleDiff.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Berbeda dengan Password Lama';
@@ -344,7 +359,6 @@ document.addEventListener("DOMContentLoaded", function () {
             ruleDiff.innerHTML = '<i class="fa-solid fa-circle-xmark me-1 text-danger"></i> Berbeda dengan Password Lama';
         }
 
-        // Validasi Rule 3: Konfirmasi Password Cocok
         if (confirmVal.length > 0) {
             if (isMatchValid) {
                 confirmFeedback.className = "d-block mt-1 small text-success";
@@ -357,7 +371,6 @@ document.addEventListener("DOMContentLoaded", function () {
             confirmFeedback.innerHTML = "";
         }
 
-        // Enable / Disable Tombol Submit
         if (currentVal.length > 0 && isLengthValid && isDiffValid && isMatchValid) {
             btnSubmit.removeAttribute("disabled");
         } else {
@@ -365,12 +378,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Input Listeners Real-time
     currentPasswordInput.addEventListener("input", validateForm);
     newPasswordInput.addEventListener("input", validateForm);
     confirmPasswordInput.addEventListener("input", validateForm);
 
-    // Toggle Show/Hide Password Eye
     document.querySelectorAll(".toggle-pwd").forEach(button => {
         button.addEventListener("click", function () {
             const targetId = this.getAttribute("data-target");
@@ -390,9 +401,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. NOTIFIKASI WARNING (Contoh: Peringatan Ganti Password Default)
     @if(session('warning'))
         Swal.fire({
             icon: 'warning',
@@ -402,14 +413,12 @@ document.addEventListener("DOMContentLoaded", function () {
             confirmButtonText: 'Ubah Password Sekarang'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Otomatis pindah/pilih tab Pengaturan Keamanan
                 const settingsTab = new bootstrap.Tab(document.querySelector('a[href="#settings"]'));
                 settingsTab.show();
             }
         });
     @endif
 
-    // 2. NOTIFIKASI SUCCESS (Contoh: Berhasil Update Password/Profil)
     @if(session('success'))
         Swal.fire({
             icon: 'success',
@@ -420,7 +429,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     @endif
 
-    // 3. NOTIFIKASI ERROR
     @if(session('error'))
         Swal.fire({
             icon: 'error',
@@ -431,4 +439,4 @@ document.addEventListener("DOMContentLoaded", function () {
     @endif
 });
 </script>
-@endsection 
+@endsection

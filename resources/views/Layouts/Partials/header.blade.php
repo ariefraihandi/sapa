@@ -26,6 +26,12 @@
 
                 <ul class="navbar-nav header-right">
                     <!-- Notification Dropdown (Pulse/Titik Kuning Dimatikan) -->
+                    <li class="nav-item dropdown notification_dropdown">
+                        <a class="nav-link bell dz-theme-mode"  aria-label="dz-theme-mode">
+                            <i id="icon-light" class="fas fa-sun"></i>
+                            <i id="icon-dark" class="fas fa-moon"></i>
+                        </a>
+                    </li>
                     <li class="nav-item dropdown notification_dropdown position-relative">
                         <a class="nav-link ai-icon" href="javascript:void(0)" role="button" data-bs-toggle="dropdown" data-bs-display="static">
                             <i class="flaticon-381-ring"></i>

@@ -152,7 +152,7 @@
                 <h5 class="modal-title text-white mb-0"><i class="fa fa-plus-circle me-2"></i> Tambah Satuan Kerja Baru</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ url('/pengguna/satker/store') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('satker.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body p-4 text-dark">
                     <div class="row">

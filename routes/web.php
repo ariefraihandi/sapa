@@ -19,6 +19,7 @@ Route::get('/buku-tamu', [LayananController::class, 'bukuTelepon'])->name('buku-
 Route::post('/buku-tamu', [LayananController::class, 'store'])->name('buku-tamu.store');
 Route::get('/layanan/persyaratan-perkara', [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
 Route::get('/layanan/persyaratan-perkara/{satker_vshort}', [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
+Route::get('/layanan/persyaratan-perkara/{satker_vshort}/{jenis_perkara_id}/download-pdf', [LayananController::class, 'downloadPersyaratanPdf'])->name('public.persyaratan-perkara.download-pdf');
 
 // Route AJAX Store Publik (LayananController)
 Route::post('/layanan/pengunjung/store', [LayananController::class, 'storePengunjung'])->name('public.pengunjung.store');
@@ -50,12 +51,16 @@ Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 */
 Route::middleware(['auth'])->group(function () {
 
-    // 1. ROUTE ACTION / API (Tanpa CheckMenuAccess agar AJAX & Form Process Lancar)
+    // =========================================================================
+    // 1. ROUTE ACTION / API / PROCESS (Tanpa CheckMenuAccess agar Form Process Lancar)
+    // =========================================================================
     
-    // Action Profile
+    // Action Profile & Satker
     Route::put('/profile/update', [PenggunaController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/update-password', [PenggunaController::class, 'updatePassword'])->name('profile.update-password');
     Route::put('/pengguna/satker-profile/update', [PenggunaController::class, 'updateSatkerProfile'])->name('pengguna.satker-profile.update');
+    Route::put('/pengguna/satker-profile/update-kop', [PenggunaController::class, 'updateKopSurat'])->name('pengguna.satker-profile.update-kop');
+    Route::post('/pengguna/satker/store', [SystemController::class, 'storeSatker'])->name('satker.store');
 
     // Action System
     Route::prefix('system')->group(function () {
@@ -87,7 +92,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
 
-    // 2. ROUTE HALAMAN WEB (Diproteksi CheckMenuAccess)
+    // =========================================================================
+    // 2. ROUTE HALAMAN WEB / VIEWS (Diproteksi Middleware CheckMenuAccess)
+    // =========================================================================
     Route::middleware([CheckMenuAccess::class])->group(function () {
 
         // Dashboard        
@@ -110,6 +117,7 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('ptsp')->group(function () {
             Route::get('/pengunjung', [SyaratPerkaraController::class, 'indexPengunjung'])->name('ptsp.pengunjung.index');
             Route::get('/pengaduan', [SyaratPerkaraController::class, 'indexPengaduan'])->name('ptsp.pengaduan.index');
+            Route::get('/daftar-ptsp', [SyaratPerkaraController::class, 'daftarPtsp'])->name('ptsp.daftar-ptsp.index');
             Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'index'])->name('ptsp.syarat-perkara.index');
             Route::get('/syarat-perkara/edit', [SyaratPerkaraController::class, 'edit'])->name('ptsp.syarat-perkara.edit');
             Route::get('/profil-ptsp', [SyaratPerkaraController::class, 'ptspDaerah'])->name('ptsp.profil-ptsp.index');

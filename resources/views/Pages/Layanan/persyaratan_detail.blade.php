@@ -24,11 +24,13 @@
         <!-- MAIN CONTAINER -->
         <main class="main-container">
             
-            <!-- Tombol Kembali -->
-            <div style="margin-bottom: 2rem;">
+            <!-- Tombol Kembali & Header Akses Download PDF Satker -->
+            <div style="margin-bottom: 2rem;" class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <a href="{{ route('public.persyaratan-perkara') }}" class="btn-auth btn-login" style="display: inline-flex; width: auto;">
-                    <i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar Satker
+                    <i class="fa-solid fa-arrow-left me-2"></i> Kembali ke Daftar Satker
                 </a>
+
+            
             </div>
 
             <!-- GRID CONTAINER CARD PERKARA -->
@@ -108,8 +110,17 @@
                                 </ol>
                             </div>
 
-                            <div class="custom-modal-footer">
-                                <button type="button" class="btn-auth btn-login" onclick="closeDetailModal({{ $index }})" style="border-radius: 10px; padding: 0.6rem 1.25rem;">
+                            <!-- FOOTER MODAL DETAIL PERKARA -->
+                            <div class="custom-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                                <!-- TOMBOL DOWNLOAD PDF SPESIFIK JENIS PERKARA -->
+                                <a href="{{ route('public.persyaratan-perkara.download-pdf', ['satker_vshort' => $satker->satker_vshort, 'jenis_perkara_id' => $item->jenisPerkara->id]) }}" 
+                                target="_blank" 
+                                style="display: inline-flex; align-items: center; gap: 6px; background-color: #ef4444; color: #ffffff; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                                    <i class="fa-solid fa-file-pdf"></i> Download Persyaratan
+                                </a>
+
+                                <!-- TOMBOL TUTUP -->
+                                <button type="button" class="btn-auth btn-login" onclick="closeDetailModal({{ $index }})" style="border-radius: 10px; padding: 0.5rem 1.25rem;">
                                     Tutup
                                 </button>
                             </div>
@@ -178,7 +189,7 @@
 
             .custom-modal-body {
                 padding: 1.5rem;
-                max-height: 65vh;
+                max-height: 60vh;
                 overflow-y: auto;
             }
 
@@ -186,7 +197,6 @@
                 padding: 1rem 1.5rem;
                 background: #f8fafc;
                 border-top: 1px solid #e2e8f0;
-                text-align: right;
             }
 
             @keyframes modalFadeIn {

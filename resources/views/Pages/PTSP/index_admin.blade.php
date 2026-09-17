@@ -21,12 +21,18 @@
                             <th>No. WA Layanan</th>
                             <th>Status WA</th>
                             <th>Panggilan Suara</th>
+                            <th>Script Widget</th>
                             <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($satkers as $index => $item)
-                            @php $ptsp = $item->ptspDaerah; @endphp
+                            @php 
+                                $ptsp = $item->ptspDaerah; 
+                                
+                                // URL dinamis mengikuti domain aktif (lokal / live server)
+                                $embedScript = '<script src="' . url('/js/ptsp-widget.js') . '" data-satker-id="' . $item->id . '" data-server-url="' . url('/') . '" async></script>';
+                            @endphp
                             <tr>
                                 <td>{{ $index + 1 }}</td>
                                 <td>
@@ -74,6 +80,22 @@
                                         </span>
                                     @endif
                                 </td>
+
+                                <!-- KOLOM SCRIPT WIDGET EMBED -->
+                                <td>
+                                    <div class="input-group input-group-sm" style="min-width: 220px;">
+                                        <input type="text" class="form-control font-monospace form-control-sm bg-light" 
+                                               id="scriptInput{{ $item->id }}" 
+                                               value="{{ $embedScript }}" readonly>
+                                        <button class="btn btn-outline-secondary btn-copy" 
+                                                type="button" 
+                                                onclick="copyEmbedScript('{{ $item->id }}')"
+                                                title="Copy Script Widget">
+                                            <i class="fa-regular fa-copy me-1" id="copyIcon{{ $item->id }}"></i> Copy
+                                        </button>
+                                    </div>
+                                </td>
+
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditPtsp{{ $item->id }}">
                                         <i class="fa-solid fa-pen-to-square"></i> Edit
@@ -135,4 +157,51 @@
         </div>
     </div>
 </div>
+
+<!-- SCRIPT JS UNTUK TOMBOL COPY TO CLIPBOARD + SWEETALERT2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function copyEmbedScript(satkerId) {
+    const inputElement = document.getElementById('scriptInput' + satkerId);
+    const iconElement = document.getElementById('copyIcon' + satkerId);
+    
+    if (!inputElement) return;
+
+    inputElement.select();
+    inputElement.setSelectionRange(0, 99999);
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(inputElement.value);
+        } else {
+            document.execCommand('copy');
+        }
+
+        if (iconElement) {
+            iconElement.className = "fa-solid fa-check text-success me-1";
+            setTimeout(() => {
+                iconElement.className = "fa-regular fa-copy me-1";
+            }, 2000);
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Disalin!',
+                text: 'Script widget PTSP telah disalin ke clipboard.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2500,
+                timerProgressBar: true
+            });
+        } else {
+            alert('✅ Script widget berhasil disalin ke clipboard!');
+        }
+
+    } catch (err) {
+        alert('❌ Gagal menyalin script secara otomatis.');
+    }
+}
+</script>
 @endsection

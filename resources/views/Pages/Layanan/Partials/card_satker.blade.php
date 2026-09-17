@@ -8,13 +8,45 @@
     $has_whatsapp_service = $item['has_whatsapp_service'] ?? false;
     $is_call_able = $item['is_call_able'] ?? false;
     $satker_vshort = $item['satker_vshort'] ?? $item['id'];
+
+    // LOGIKA JAM OPERASIONAL
+    $jamBuka  = $item['jam_buka'] ?? '08:00';
+    $jamTutup = $item['jam_tutup'] ?? '16:30';
+    
+    $skrg = \Carbon\Carbon::now();
+    $isHariKerja = !$skrg->isWeekend();
+    
+    $jamSkrg = $skrg->format('H:i');
+    $isBuka   = $isHariKerja && ($jamSkrg >= $jamBuka && $jamSkrg <= $jamTutup);
 @endphp
 
 <div class="satker-card" data-title="{{ strtolower($item['nama_satker']) }} {{ strtolower($item['wilayah_kerja'] ?? '') }}">
     <div>
-        <div class="card-header-icon">
-            <i class="fa-solid fa-building-columns"></i>
+        <!-- WAPPER HEADER: LOGO DI KIRI, JAM PELAYANAN DI KANAN SEJAJAR -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <!-- LOGO GEDUNG -->
+            <div class="card-header-icon" style="margin-bottom: 0;">
+                <i class="fa-solid fa-building-columns"></i>
+            </div>
+
+            <!-- KOTAK JAM PELAYANAN (DIPOSISIKAN DI KANAN LOGO) -->
+            <div style="text-align: right; font-size: 0.75rem;">
+                @if($isBuka)
+                    <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                        <span style="width: 6px; height: 6px; background-color: #10b981; border-radius: 50%; display: inline-block;"></span> Buka
+                    </span>
+                @else
+                    <span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                        <span style="width: 6px; height: 6px; background-color: #ef4444; border-radius: 50%; display: inline-block;"></span> Tutup
+                    </span>
+                @endif
+                
+                <div style="color: #64748b; margin-top: 3px; font-weight: 500; white-space: nowrap;">
+                    <i class="fa-regular fa-clock me-1"></i>{{ $jamBuka }} - {{ $jamTutup }} WIB
+                </div>
+            </div>
         </div>
+
         <h2 class="satker-title">{{ $item['nama_satker'] }}</h2>      
     </div>
     
@@ -58,7 +90,7 @@
             <i class="fa-solid fa-list-check"></i> Syarat Perkara
         </a>
 
-        <!-- Tombol Pengaduan (MEMUAT MODAL SWEETALERT2) -->
+        <!-- Tombol Pengaduan -->
         <button type="button" 
                 onclick="showFormPengaduan('{{ $item['id'] }}', '{{ $item['nama_satker'] }}', '{{ $link_wa_chat }}')"
                 class="btn-wa" 

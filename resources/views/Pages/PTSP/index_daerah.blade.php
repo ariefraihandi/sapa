@@ -7,13 +7,32 @@
     <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background: linear-gradient(135deg, #047857 0%, #10b981 100%); color: white;">
         <div class="card-body p-4 d-flex align-items-center gap-4 flex-wrap">
             <div style="background: white; padding: 12px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                <img src="{{ asset($satker->logo ? 'storage/'.$satker->logo : 'images/logo.png') }}" 
+                <img src="{{ asset(($satker->logo && file_exists(public_path('assets/images/satker/'.$satker->logo))) ? 'assets/images/satker/'.$satker->logo : 'images/logo.png') }}" 
                      alt="Logo Satker" style="width: 70px; height: 70px; object-fit: contain;">
             </div>
             <div>
                 <span class="badge bg-white text-dark mb-1" style="font-weight: 700; font-size: 0.75rem;">PROFIL LAYANAN PTSP</span>
                 <h3 class="fw-bold mb-1" style="color: #ffffff;">{{ $satker->satker_name }}</h3>
-                <p class="mb-0 opacity-75" style="font-size: 0.9rem;"><i class="fa-solid fa-location-dot me-1"></i>{{ $satker->satker_city ?? 'Wilayah Hukum MS Aceh' }}</p>
+                <p class="mb-0 opacity-75" style="font-size: 0.9rem;"><i class="fa-solid fa-location-dot me-1"></i>{{ $satker->alamat ?? 'Wilayah Hukum MS Aceh' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD SCRIPT WIDGET EMBED UNTUK SATKER DAERAH -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
+        <div class="card-header bg-white p-4 border-bottom-0 pb-0">
+            <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-code text-success me-2"></i>Script Widget Floating Chat SAPA</h5>
+            <small class="text-muted">Salin baris kode JavaScript di bawah ini dan pasang sebelum tag <code>&lt;/body&gt;</code> pada website resmi Satker Anda.</small>
+        </div>
+        <div class="card-body p-4">
+            @php
+                $embedScript = '<script src="' . url('/js/ptsp-widget.js') . '" data-satker-id="' . $satker->id . '" data-server-url="' . url('/') . '" async></script>';
+            @endphp
+            <div class="input-group input-group-lg">
+                <input type="text" class="form-control font-monospace bg-light fs-6" id="mySatkerScript" value="{{ $embedScript }}" readonly>
+                <button class="btn btn-success fw-bold px-4" type="button" onclick="copyMySatkerScript()" id="btnCopyScript">
+                    <i class="fa-regular fa-copy me-2" id="copyIcon"></i> Salin Script
+                </button>
             </div>
         </div>
     </div>
@@ -92,4 +111,53 @@
         </div>
     </div>
 </div>
+
+<!-- SCRIPT JS UNTUK SALIN SCRIPT WIDGET SATKER DAERAH -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function copyMySatkerScript() {
+    const inputElement = document.getElementById('mySatkerScript');
+    const iconElement = document.getElementById('copyIcon');
+    
+    if (!inputElement) return;
+
+    inputElement.select();
+    inputElement.setSelectionRange(0, 99999); // Mendukung mobile browser
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(inputElement.value);
+        } else {
+            document.execCommand('copy');
+        }
+
+        // Efek Visual pada Tombol
+        if (iconElement) {
+            iconElement.className = "fa-solid fa-check me-2";
+            setTimeout(() => {
+                iconElement.className = "fa-regular fa-copy me-2";
+            }, 2000);
+        }
+
+        // Alert Notifikasi
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Script Berhasil Disalin!',
+                text: 'Silakan tempelkan script widget ini sebelum tag </body> pada website resmi Satker Anda.',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        } else {
+            alert('✅ Script widget berhasil disalin ke clipboard!');
+        }
+
+    } catch (err) {
+        alert('❌ Gagal menyalin script secara otomatis. Silakan salin teks secara manual.');
+    }
+}
+</script>
 @endsection

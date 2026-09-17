@@ -7,9 +7,12 @@ use App\Models\Menu;
 use App\Models\Submenu;
 use App\Models\Satker;
 use App\Models\User;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use App\Models\MenuAccess;
 use App\Models\SubmenuAccess;
 use App\Models\Role;
+use Illuminate\Support\Facades\Hash;
 
 class SystemController extends Controller
 {
@@ -237,7 +240,6 @@ class SystemController extends Controller
         ]);
     }
 
-
     public function satker()
     {
         // Mengambil data Satker beserta total user/admin di dalamnya
@@ -247,6 +249,110 @@ class SystemController extends Controller
             'title'   => 'Daftar Satuan Kerja - SAPA MS ACEH',
             'satkers' => $satkers,
         ]);
+    }
+
+    public function storeSatker(Request $request)
+    {
+        $request->validate([
+            'satker_name'       => 'required|string|max:255',
+            'satker_short_name' => 'required|string|max:100',
+            'satker_vshort'     => 'required|string|max:50|unique:satkers,satker_vshort',
+            'email'             => 'nullable|email|max:255',
+            'telepon'           => 'nullable|string|max:50',
+            'alamat'            => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $satkerId = (string) Str::uuid();
+            $cleanVshort = str_replace('-', '', strtolower($request->satker_vshort));
+
+            // 1. Simpan ke Tabel Satker
+            $satker = Satker::create([
+                'id'                => $satkerId,
+                'satker_name'       => $request->satker_name,
+                'satker_short_name' => $request->satker_short_name,
+                'satker_vshort'     => Str::slug($request->satker_vshort),
+                'email'             => $request->email,
+                'telepon'           => $request->telepon,
+                'whatsapp'          => $request->telepon,
+                'alamat'            => $request->alamat,
+            ]);
+
+            // 2. Simpan ke Tabel ptsp_daerahs
+            DB::table('ptsp_daerahs')->insert([
+                'id'                   => (string) Str::uuid(),
+                'satker_id'            => $satkerId,
+                'nama_pj'              => 'Penanggung Jawab ' . $request->satker_short_name,
+                'no_hp_pj'             => $request->telepon ? $request->telepon : '081111111111',
+                'has_whatsapp_service' => 1,
+                'no_wa_layanan'        => $request->telepon,
+                'is_call_able'         => 0,
+                'created_at'           => date('Y-m-d H:i:s'),
+                'updated_at'           => date('Y-m-d H:i:s'),
+            ]);
+
+            // 3. Otomatis Buat Role Default untuk Satker Baru (pimpinan, admin, staff)
+            $defaultRoles = [
+                'pimpinan' => 'Pimpinan Satker',
+                'admin'    => 'Administrator PTSP',
+                'staff'    => 'Staff / Petugas Layanan',
+            ];
+
+            foreach ($defaultRoles as $roleName => $roleDesc) {
+                // Buat Role Baru
+                $role = Role::create([
+                    'id'          => (string) Str::uuid(),
+                    'satker_id'   => $satkerId,
+                    'role_name'   => $roleName,
+                    'description' => $roleDesc,
+                ]);
+
+                // Format username: pimpinan_msbna, admin_msbna, staff_msbna
+                $username = strtolower($roleName) . '_' . $cleanVshort;
+
+                // Tentukan Nama & Jabatan
+                switch ($roleName) {
+                    case 'pimpinan':
+                        $name    = 'Pimpinan ' . $request->satker_short_name;
+                        $jabatan = 'Ketua Mahkamah Syar\'iyah';
+                        break;
+                    case 'admin':
+                        $name    = 'Admin ' . $request->satker_short_name;
+                        $jabatan = 'Administrator PTSP';
+                        break;
+                    case 'staff':
+                    default:
+                        $name    = 'Petugas ' . $request->satker_short_name;
+                        $jabatan = 'Petugas Layanan PTSP';
+                        break;
+                }
+
+                // 4. Otomatis Buat User untuk Masing-Masing Role
+                User::create([
+                    'id'        => (string) Str::uuid(),
+                    'satker_id' => $satkerId,
+                    'role_id'   => $role->id,
+                    'nip'       => null,
+                    'name'      => $name,
+                    'username'  => $username,
+                    'jabatan'   => $jabatan,
+                    'email'     => $username . '@ptsp.go.id',
+                    'phone'     => $request->telepon,
+                    'password'  => Hash::make('12345678'),
+                    'is_active' => true,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Satuan Kerja & 3 Akun Pengguna (Pimpinan, Admin, Staff) berhasil dibuat!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menambahkan Satker: ' . $e->getMessage());
+        }
     }
 
     /**

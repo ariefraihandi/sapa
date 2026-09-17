@@ -358,6 +358,17 @@ class SyaratPerkaraController extends Controller
         }
     }
 
+    public function daftarPtsp()
+    {
+        // Mengambil seluruh data Satker beserta relasi ptspDaerah, diurutkan secara abjad
+        $daftarSatker = Satker::with('ptspDaerah')->orderBy('satker_name', 'asc')->get();
+
+        return view('Pages.PTSP.profil-ptsp', [
+            'title'        => 'Daftar PTSP Se-Aceh',
+            'daftarSatker' => $daftarSatker
+        ]);
+    }
+
     /**
      * Simpan / Update Data PTSP
      */
