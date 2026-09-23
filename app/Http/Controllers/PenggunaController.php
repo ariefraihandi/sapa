@@ -79,7 +79,6 @@ class PenggunaController extends Controller
         return view('Pages.Pengguna.satker-profile', compact('satker'));
     }
 
-    // Memperbarui Data Satker milik User Login
     public function updateSatkerProfile(Request $request)
     {
         $user = Auth::user();
@@ -96,9 +95,23 @@ class PenggunaController extends Controller
             'email'             => 'nullable|email|max:255',
             'telepon'           => 'nullable|string|max:50',
             'whatsapp'          => 'nullable|string|max:50',
+            'website'           => 'nullable|string|max:255',
             'alamat'            => 'nullable|string',
             'logo'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
+
+        // Format & sanitasi input website agar wajib diawali https://
+        $websiteInput = $request->website ? trim($request->website) : null;
+        if ($websiteInput) {
+            // Hapus http:// jika pengguna memasukkan http://
+            if (str_starts_with($websiteInput, 'http://')) {
+                $websiteInput = substr($websiteInput, 7);
+            }
+            // Tambahkan https:// jika belum ada
+            if (!str_starts_with($websiteInput, 'https://')) {
+                $websiteInput = 'https://' . $websiteInput;
+            }
+        }
 
         $data = [
             'satker_name'       => $request->satker_name,
@@ -106,6 +119,7 @@ class PenggunaController extends Controller
             'email'             => $request->email,
             'telepon'           => $request->telepon,
             'whatsapp'          => $request->whatsapp,
+            'website'           => $websiteInput,
             'alamat'            => $request->alamat,
         ];
 

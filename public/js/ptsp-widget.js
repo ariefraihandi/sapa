@@ -1,16 +1,18 @@
 (function () {
     const currentScript = document.currentScript;
     const satkerId = currentScript.getAttribute('data-satker-id');
-    const serverUrl = currentScript.getAttribute('data-server-url') || 'http://sapa.test';
+    const serverUrl = currentScript.getAttribute('data-server-url') || 'https://sapa.ms-aceh.go.id';
 
     if (!satkerId) {
         console.error('PTSP Widget Error: Atribut "data-satker-id" belum diisi.');
         return;
     }
 
+    const currentOrigin = window.location.origin;
+
     // 1. Inject CSS Style
     const style = document.createElement('style');
-    style.innerHTML = `
+    style.textContent = `
         .ptsp-bubble {
             position: fixed; bottom: 20px; right: 20px; z-index: 999999;
             width: 60px; height: 60px; background-color: #25D366;
@@ -44,7 +46,7 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML Modal & Bubble (NIK Dibuat Required)
+    // 2. Inject HTML Modal & Bubble
     const container = document.createElement('div');
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
@@ -57,14 +59,24 @@
                         <option value="telepon">Telepon Direct</option>
                     </select>
                 </div>
-                <div class="ptsp-form-group">
-                    <label>Nama Lengkap *</label>
-                    <input type="text" class="ptsp-input" id="nama_responden" placeholder="Nama Anda" required />
+                <div class="ptsp-row">
+                    <div class="ptsp-col ptsp-form-group" style="flex: 2;">
+                        <label>Nama Lengkap *</label>
+                        <input type="text" class="ptsp-input" id="nama_responden" maxlength="100" placeholder="Nama Anda" required />
+                    </div>
+                    <div class="ptsp-col ptsp-form-group" style="flex: 1;">
+                        <label>Gender *</label>
+                        <select class="ptsp-select" id="jenis_kelamin" required>
+                            <option value="">Pilih</option>
+                            <option value="L">Laki-laki</option>
+                            <option value="P">Perempuan</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>No. HP / WhatsApp *</label>
-                        <input type="text" class="ptsp-input" id="no_hp" placeholder="0812..." required />
+                        <input type="text" class="ptsp-input" id="no_hp" maxlength="20" placeholder="0812..." required />
                     </div>
                     <div class="ptsp-col ptsp-form-group">
                         <label>NIK (16 Digit) *</label>
@@ -94,8 +106,11 @@
                 </div>
                 <div class="ptsp-form-group">
                     <label>Keperluan / Informasi yang Dibutuhkan *</label>
-                    <textarea class="ptsp-textarea" id="keperluan" rows="2" placeholder="Tuliskan keperluan Anda..." required></textarea>
+                    <textarea class="ptsp-textarea" id="keperluan" rows="2" maxlength="500" placeholder="Tuliskan keperluan Anda..." required></textarea>
                 </div>
+                <!-- Honeypot Field -->
+                <input type="text" id="ptsp_hp_check" style="display:none !important;" tabindex="-1" autocomplete="off" />
+                
                 <button type="submit" class="ptsp-btn-submit" id="ptspSubmitBtn">Lanjutkan ke Petugas</button>
             </form>
         </div>
@@ -107,6 +122,16 @@
 
     let isInitialized = false;
 
+    function isSafeUrl(url) {
+        try {
+            const parsed = new URL(url);
+            const allowedHosts = ['wa.me', 'api.whatsapp.com', 'web.whatsapp.com'];
+            return allowedHosts.some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+        } catch (e) {
+            return false;
+        }
+    }
+
     // 3. Event Toggle Modal & Load Init Data
     const bubble = document.getElementById('ptspBubble');
     const modal = document.getElementById('ptspModal');
@@ -116,38 +141,53 @@
         modal.style.display = isOpening ? 'block' : 'none';
 
         if (isOpening && !isInitialized) {
-            fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
+            const initUrl = `${serverUrl}/api/ptsp/init-data?satker_id=${encodeURIComponent(satkerId)}&client_domain=${encodeURIComponent(currentOrigin)}`;
+
+            fetch(initUrl)
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === 'success') {
-                        document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
+                        document.getElementById('ptspHeaderTitle').textContent = `🏛️ Layanan SAPA\n${res.satker_name || ''}`;
 
                         const pekerjaanSelect = document.getElementById('pekerjaan');
-                        pekerjaanSelect.innerHTML = '<option value="">-- Pilih Pekerjaan --</option>';
-                        if (res.pekerjaan_list && res.pekerjaan_list.length > 0) {
+                        pekerjaanSelect.textContent = '';
+
+                        const defaultOpt = document.createElement('option');
+                        defaultOpt.value = '';
+                        defaultOpt.textContent = '-- Pilih Pekerjaan --';
+                        pekerjaanSelect.appendChild(defaultOpt);
+
+                        if (Array.isArray(res.pekerjaan_list) && res.pekerjaan_list.length > 0) {
                             res.pekerjaan_list.forEach(item => {
                                 const opt = document.createElement('option');
                                 opt.value = item;
-                                opt.innerText = item;
+                                opt.textContent = item;
                                 pekerjaanSelect.appendChild(opt);
                             });
                         }
                         isInitialized = true;
+                    } else {
+                        alert('⚠️ Akses Layanan Ditolak: ' + (res.message || 'Domain tidak valid.'));
+                        modal.style.display = 'none';
                     }
                 })
                 .catch(err => console.error('Gagal mengambil data awal widget:', err));
         }
     });
 
-    // Validasi Input NIK hanya Menerima Angka saat Diketik
-    document.getElementById('nik').addEventListener('input', function (e) {
+    // Validasi Input NIK
+    document.getElementById('nik').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
     // 4. Submit Handler
     document.getElementById('ptspForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        
+
+        if (document.getElementById('ptsp_hp_check').value !== '') {
+            return;
+        }
+
         const nikVal = document.getElementById('nik').value;
         if (nikVal.length !== 16) {
             alert('⚠️ NIK harus diisi tepat 16 digit angka.');
@@ -156,12 +196,14 @@
 
         const submitBtn = document.getElementById('ptspSubmitBtn');
         submitBtn.disabled = true;
-        submitBtn.innerText = 'Menyimpan Data...';
+        submitBtn.textContent = 'Menyimpan Data...';
 
         const payload = {
             satker_id: satkerId,
+            client_domain: currentOrigin,
             jenis_layanan: document.getElementById('jenis_layanan').value,
             nama_responden: document.getElementById('nama_responden').value,
+            jenis_kelamin: document.getElementById('jenis_kelamin').value,
             no_hp: document.getElementById('no_hp').value,
             nik: nikVal,
             pekerjaan: document.getElementById('pekerjaan').value || null,
@@ -178,9 +220,14 @@
         .then(res => {
             if (res.status === 'success') {
                 if (payload.jenis_layanan === 'telepon' && res.phone_number) {
-                    window.location.href = `tel:${res.phone_number}`;
+                    const safePhone = String(res.phone_number).replace(/[^0-9+]/g, '');
+                    window.location.href = `tel:${safePhone}`;
                 } else if (res.redirect_url) {
-                    window.open(res.redirect_url, '_blank');
+                    if (isSafeUrl(res.redirect_url)) {
+                        window.open(res.redirect_url, '_blank');
+                    } else {
+                        alert('⚠️ Akses ditolak: URL tujuan tidak aman.');
+                    }
                 }
                 modal.style.display = 'none';
                 document.getElementById('ptspForm').reset();
@@ -189,11 +236,12 @@
             }
         })
         .catch(err => {
-            alert('⚠️ Gagal: ' + err.message);
+            alert('⚠️ Gagal memproses permintaan.');
+            console.error(err);
         })
         .finally(() => {
             submitBtn.disabled = false;
-            submitBtn.innerText = 'Lanjutkan ke Petugas';
+            submitBtn.textContent = 'Lanjutkan ke Petugas';
         });
     });
 })();
