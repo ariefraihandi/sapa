@@ -10,7 +10,7 @@
                 @php
                     $user = Auth::user();
                     $satkerName = $user->satker->satker_name ?? '';
-                    $isMsAceh = ($user->role === 'admin') || str_contains(strtolower($satkerName), "mahkamah syar'iyah aceh") || str_contains(strtolower($satkerName), 'ms aceh');
+                    $isMsAceh = ($user->role === 'admin') || str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
                 @endphp
 
                 @if($isMsAceh)
@@ -33,20 +33,6 @@
     <!-- TABEL DATA PENGUNJUNG -->
     <div class="card border-0 shadow-sm" style="border-radius: 16px;">
         <div class="card-body p-4">
-            
-            <!-- FORM PENCARIAN MANUAL (CARI ID / NAMA / HP) -->
-            <form method="GET" action="{{ route('ptsp.pengunjung.index') }}" class="mb-4">
-                <div class="input-group" style="max-width: 400px;">
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari Berdasarkan ID, Nama, atau No HP..." value="{{ request('search') }}" style="border-radius: 8px 0 0 8px;">
-                    <button class="btn btn-sm btn-success px-3" type="submit" style="border-radius: 0 8px 8px 0;">
-                        <i class="fa-solid fa-search me-1"></i> Cari
-                    </button>
-                    @if(request('search'))
-                        <a href="{{ route('ptsp.pengunjung.index') }}" class="btn btn-sm btn-outline-secondary ms-2" style="border-radius: 8px;">Reset</a>
-                    @endif
-                </div>
-            </form>
-
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
@@ -61,28 +47,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($pengunjung as $index =>$item)
+                        @forelse($pengunjung as $index => $item)
                             @php
-                                $no_hp_clean = preg_replace('/[^0-9]/', '',$item->no_hp);
+                                $no_hp_clean = preg_replace('/[^0-9]/', '', $item->no_hp);
                                 if (str_starts_with($no_hp_clean, '0')) {
                                     $no_hp_clean = '62' . substr($no_hp_clean, 1);
                                 }
-                                
-                                // ID Pendek untuk format pesan WhatsApp
-                                $short_id = strtolower(substr($item->id, 0, 8));
-
-                                // Format Pesan WhatsApp sesuai format registrasi widget
-                                $wa_message = "Halo PTSP *Mahkamah Syar'iyah Aceh*,\n\n" .
-                                              "Saya membutuhkan informasi/layanan:\n" .
-                                              "• *Nama:* {$item->nama_responden}\n" .
-                                              "• *No. HP:* {$item->no_hp}\n" .
-                                              "• *Keperluan:* " . ($item->keperluan ?: '-') . "\n\n" .
-                                              "_Registrasi via Widget PTSP Online (ID: {$short_id})_";
-
-                                $link_wa = "https://wa.me/" . $no_hp_clean . "?text=" . urlencode($wa_message);
+                                $link_wa = "https://wa.me/" . $no_hp_clean;
                             @endphp
                             <tr>
-                                <td>{{ $pengunjung->firstItem() +$index }}</td>
+                                <td>{{ $pengunjung->firstItem() + $index }}</td>
                                 <td>
                                     <strong class="d-block text-dark fs-15">{{ $item->nama_responden }}</strong>
                                     <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
@@ -94,10 +68,11 @@
                                                 <i class="fa-solid fa-briefcase me-1 text-secondary"></i>{{ $item->pekerjaan }}
                                             </span>
                                         @endif
-                                        <!-- Menampilkan ID ringkas -->
-                                        <span class="badge bg-secondary text-white font-monospace" style="font-size: 0.65rem;">
-                                            ID: {{ $short_id }}
-                                        </span>
+                                        @if($item->nik)
+                                            <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;">
+                                                NIK: {{ $item->nik }}
+                                            </span>
+                                        @endif
                                     </div>
                                     <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
                                         <i class="fa-solid fa-clock me-1"></i>{{ $item->created_at->format('d M Y - H:i') }} WIB
@@ -180,8 +155,8 @@
 </div>
 
 <!-- ========================== MODALS ACTION ========================== -->
-@foreach($pengunjung as $index =>$item)
-    <!-- 1. MODAL DETAIL (NIK Dihilangkan) -->
+@foreach($pengunjung as $index => $item)
+    <!-- 1. MODAL DETAIL -->
     <div class="modal fade" id="modalDetailPengunjung{{ $loop->index }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -191,11 +166,11 @@
                 </div>
                 <div class="modal-body text-start">
                     <table class="table table-sm table-borderless">
-                        <tr><td width="35%" class="text-muted">ID Pengunjung</td><td width="5%">:</td><td class="fw-bold font-monospace text-primary">{{ $item->id }}</td></tr>
-                        <tr><td class="text-muted">Nama Pemohon</td><td>:</td><td class="fw-bold">{{ $item->nama_responden }}</td></tr>
+                        <tr><td width="35%" class="text-muted">Nama Pemohon</td><td width="5%">:</td><td class="fw-bold">{{ $item->nama_responden }}</td></tr>
                         <tr><td class="text-muted">Nomor HP/WA</td><td>:</td><td>{{ $item->no_hp }}</td></tr>
                         <tr><td class="text-muted">Jenis Kelamin</td><td>:</td><td>{{ $item->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</td></tr>
                         <tr><td class="text-muted">Pekerjaan</td><td>:</td><td>{{ $item->pekerjaan ?: '-' }}</td></tr>
+                        <tr><td class="text-muted">NIK / KTP</td><td>:</td><td>{{ $item->nik ?: '-' }}</td></tr>
                         <tr><td class="text-muted">Satker Tujuan</td><td>:</td><td>{{ $item->satker->satker_name ?? '-' }}</td></tr>
                         <tr><td class="text-muted">Jenis Layanan</td><td>:</td><td><span class="badge bg-secondary">{{ ucfirst($item->jenis_layanan) }}</span></td></tr>
                         <tr><td class="text-muted">Waktu Kunjungan</td><td>:</td><td>{{ $item->created_at->format('d F Y - H:i') }} WIB</td></tr>
@@ -209,7 +184,7 @@
         </div>
     </div>
 
-    <!-- 2. MODAL EDIT (NIK Dihilangkan) -->
+    <!-- 2. MODAL EDIT -->
     <div class="modal fade" id="modalEditPengunjung{{ $loop->index }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content border-0 shadow" action="{{ route('ptsp.pengunjung.update', $item->id) }}" method="POST">
@@ -238,6 +213,10 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Pekerjaan</label>
                         <input type="text" name="pekerjaan" class="form-control" value="{{ $item->pekerjaan }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">NIK / No. KTP</label>
+                        <input type="text" name="nik" class="form-control" maxlength="16" value="{{ $item->nik }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Keperluan</label>

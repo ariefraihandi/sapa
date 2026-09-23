@@ -11,7 +11,7 @@ use App\Http\Middleware\CheckMenuAccess;
 
 /*
 |--------------------------------------------------------------------------
-| 1. Public Routes (Akses Tanpa Login)
+| Public Routes (Akses Tanpa Login)
 |--------------------------------------------------------------------------
 */
 Route::get('/', [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
@@ -46,15 +46,15 @@ Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 
 /*
 |--------------------------------------------------------------------------
-| 2. Authenticated Routes (Wajib Login)
+| Authenticated Routes (Wajib Login)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
 
     // =========================================================================
-    // A. ROUTE ACTION / API / PROCESS (Tanpa CheckMenuAccess agar Form Process & AJAX Lancar)
+    // 1. ROUTE ACTION / API / PROCESS (Tanpa CheckMenuAccess agar Form Process Lancar)
     // =========================================================================
-
+    
     // Action Profile & Satker
     Route::put('/profile/update', [PenggunaController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/update-password', [PenggunaController::class, 'updatePassword'])->name('profile.update-password');
@@ -72,11 +72,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/access/toggle-submenu', [SystemController::class, 'toggleSubmenuAccess'])->name('system.access.toggle-submenu');
     });
 
-    // Action PTSP & Endpoint AJAX DataTables
+    // Action PTSP
     Route::prefix('ptsp')->group(function () {
-        // Route AJAX DataTables Pengunjung
-        Route::get('/pengunjung/data', [SyaratPerkaraController::class, 'getDataPengunjung'])->name('ptsp.pengunjung.data');
-
         Route::post('/syarat-perkara', [SyaratPerkaraController::class, 'store'])->name('ptsp.syarat-perkara.store');
         Route::put('/syarat-perkara/jenis-perkara/{id}', [SyaratPerkaraController::class, 'updateJenisPerkara'])->name('ptsp.syarat-perkara.update-jenis');
         Route::put('/syarat-perkara/{id}', [SyaratPerkaraController::class, 'update'])->name('ptsp.syarat-perkara.update');
@@ -94,12 +91,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
     });
 
+
     // =========================================================================
-    // B. ROUTE HALAMAN WEB / VIEWS (Diproteksi Middleware CheckMenuAccess)
+    // 2. ROUTE HALAMAN WEB / VIEWS (Diproteksi Middleware CheckMenuAccess)
     // =========================================================================
     Route::middleware([CheckMenuAccess::class])->group(function () {
 
-        // Dashboard
+        // Dashboard        
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // Pengguna & Profile Views

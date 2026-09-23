@@ -412,31 +412,7 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Data PTSP berhasil diperbarui!');
     }
 
-    // public function indexPengunjung()
-    // {
-    //     $user = Auth::user();
-    //     $title = 'Daftar Pengunjung';
-
-    //     // Query awal dengan relasi satker
-    //     $query = PengunjungPtsp::with('satker')->latest();
-
-    //     // Cek apakah user berasal dari MS Aceh atau ber-role admin
-    //     if ($user->role !== 'admin') {
-    //         $satkerName = $user->satker->satker_name ?? '';
-    //         $isMsAceh = str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
-
-    //         // Jika bukan MS Aceh dan bukan Admin, filter hanya satker miliknya sendiri
-    //         if (!$isMsAceh && $user->satker_id) {
-    //             $query->where('satker_id', $user->satker_id);
-    //         }
-    //     }
-
-    //     $pengunjung = $query->paginate(15);
-
-    //     return view('Pages.PTSP.pengunjung_index', compact('pengunjung', 'title'));
-    // }
-
-    public function indexPengunjung(Request $request)
+    public function indexPengunjung()
     {
         $user = Auth::user();
         $title = 'Daftar Pengunjung';
@@ -455,18 +431,7 @@ class SyaratPerkaraController extends Controller
             }
         }
 
-        // Fitur Pencarian Manual (Berdasarkan ID, Nama, No HP, atau Keperluan)
-        if ($request->filled('search')) {
-            $keyword = $request->input('search');
-            $query->where(function($q) use ($keyword) {
-                $q->where('id', 'LIKE', "%{$keyword}%")
-                  ->orWhere('nama_responden', 'LIKE', "%{$keyword}%")
-                  ->orWhere('no_hp', 'LIKE', "%{$keyword}%")
-                  ->orWhere('keperluan', 'LIKE', "%{$keyword}%");
-            });
-        }
-
-        $pengunjung = $query->paginate(15)->appends($request->all());
+        $pengunjung = $query->paginate(15);
 
         return view('Pages.PTSP.pengunjung_index', compact('pengunjung', 'title'));
     }

@@ -56,7 +56,7 @@
                             <i class="fa-solid fa-building me-2"></i> Detail Kontak & Instansi
                         </h6>
                     </div>
-                    <div class="card-body p-3">                        
+                    <div class="card-body p-3">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="text-muted small d-block">Nama Lengkap Satker</label>
@@ -70,27 +70,17 @@
                                 <label class="text-muted small d-block">Kode VShort / Slug</label>
                                 <code class="fw-bold text-primary fs-6">{{ $satker->satker_vshort }}</code>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="text-muted small d-block">Alamat Email Resmi</label>
                                 <span class="fw-bold text-dark"><i class="fa-solid fa-envelope me-1 text-warning"></i>{{ $satker->email ?? '-' }}</span>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="text-muted small d-block">Nomor Telepon Kantor</label>
                                 <span class="fw-bold text-dark"><i class="fa-solid fa-phone me-1 text-primary"></i>{{ $satker->telepon ?? '-' }}</span>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="text-muted small d-block">Nomor WhatsApp PTSP</label>
                                 <span class="fw-bold text-dark"><i class="fa-brands fa-whatsapp me-1 text-success"></i>{{ $satker->whatsapp ?? '-' }}</span>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="text-muted small d-block">Website Resmi</label>
-                                @if($satker->website)
-                                    <a href="{{ $satker->website }}" target="_blank" class="fw-bold text-success text-decoration-none">
-                                        <i class="fa-solid fa-globe me-1"></i>{{ $satker->website }}
-                                    </a>
-                                @else
-                                    <span class="fw-bold text-dark">-</span>
-                                @endif
                             </div>
                             <div class="col-md-12">
                                 <label class="text-muted small d-block">Alamat Lengkap Kantor</label>
@@ -166,8 +156,7 @@
                 <form action="{{ route('pengguna.satker-profile.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
-                    <div class="modal-body p-4 text-dark">                        
-                        <!-- Di dalam form modal #modalEditSatkerProfile -->
+                    <div class="modal-body p-4 text-dark">
                         <div class="row g-3">
                             <div class="col-md-8">
                                 <label class="form-label font-weight-bold">Nama Satker Lengkap <span class="text-danger">*</span></label>
@@ -177,22 +166,17 @@
                                 <label class="form-label font-weight-bold">Singkatan <span class="text-danger">*</span></label>
                                 <input type="text" name="satker_short_name" class="form-control form-control-sm" value="{{ $satker->satker_short_name }}" required>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label font-weight-bold">Alamat Email</label>
                                 <input type="email" name="email" class="form-control form-control-sm" value="{{ $satker->email }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label font-weight-bold">Telepon Kantor</label>
                                 <input type="text" name="telepon" class="form-control form-control-sm" value="{{ $satker->telepon }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label font-weight-bold">WhatsApp PTSP</label>
                                 <input type="text" name="whatsapp" class="form-control form-control-sm" value="{{ $satker->whatsapp }}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label font-weight-bold">Website Resmi</label>
-                                <input type="text" name="website" class="form-control form-control-sm" value="{{ $satker->website }}" placeholder="ms-aceh.go.id">
-                                <small class="text-muted" style="font-size: 0.7rem;">Otomatis diawali https://</small>
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label font-weight-bold">Alamat Kantor</label>
