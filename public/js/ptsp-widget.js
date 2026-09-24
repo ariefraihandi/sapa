@@ -21,24 +21,61 @@
         'Lainnya'
     ];
 
-    // 1. Inject CSS
+    // 1. Inject CSS Style
     const style = document.createElement('style');
     style.innerHTML = `
-        .ptsp-bubble {
+        /* Container Bubble Wrapper untuk Tooltip Hover */
+        .ptsp-bubble-container {
             position: fixed; bottom: 20px; right: 20px; z-index: 999999;
+            display: none; align-items: center; gap: 10px;
+        }
+
+        /* Tooltip Teks Hover */
+        .ptsp-tooltip {
+            background-color: #333333; color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); opacity: 0; visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+            white-space: nowrap; pointer-events: none;
+        }
+
+        .ptsp-bubble-container:hover .ptsp-tooltip {
+            opacity: 1; visibility: visible;
+        }
+
+        /* Bubble Button */
+        .ptsp-bubble {
             width: 60px; height: 60px; background-color: #25D366;
             border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: transform 0.2s;
+            cursor: pointer; transition: transform 0.2s ease, background-color 0.2s;
         }
-        .ptsp-bubble:hover { transform: scale(1.08); }
+        .ptsp-bubble:hover { transform: scale(1.08); background-color: #20ba5a; }
+
+        /* Modal Box */
         .ptsp-modal {
-            position: fixed; bottom: 90px; right: 20px; z-index: 999999;
+            position: fixed; bottom: 20px; right: 20px; z-index: 999999;
             width: 360px; max-width: 90vw; background: #ffffff; border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: none; overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .ptsp-header { background: #006633; color: #ffffff; padding: 14px 16px; font-weight: 600; font-size: 14px; text-align: center; white-space: pre-line; }
+
+        /* Header Modal dengan Tombol Close */
+        .ptsp-header {
+            background: #006633; color: #ffffff; padding: 14px 16px;
+            font-weight: 600; font-size: 14px; text-align: center; white-space: pre-line;
+            position: relative;
+        }
+
+        .ptsp-btn-close {
+            position: absolute; top: 10px; right: 12px;
+            background: transparent; border: none; color: #ffffff;
+            font-size: 20px; font-weight: bold; cursor: pointer; line-height: 1;
+            opacity: 0.8; transition: opacity 0.2s;
+        }
+        .ptsp-btn-close:hover { opacity: 1; }
+
         .ptsp-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
         .ptsp-form-group { margin-bottom: 12px; }
         .ptsp-form-group label { display: block; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
@@ -57,11 +94,14 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML
+    // 2. Inject HTML Modal, Bubble & Tooltip Hover
     const container = document.createElement('div');
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
-            <div class="ptsp-header" id="ptspHeaderTitle">🏛️ Layanan SAPA</div>
+            <div class="ptsp-header" id="ptspHeaderTitle">
+                🏛️ Layanan SAPA
+                <button type="button" class="ptsp-btn-close" id="ptspBtnClose" title="Tutup">&times;</button>
+            </div>
             <form class="ptsp-body" id="ptspForm">
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
@@ -126,8 +166,13 @@
                 <button type="submit" class="ptsp-btn-submit" id="ptspSubmitBtn">Lanjutkan ke Petugas</button>
             </form>
         </div>
-        <div class="ptsp-bubble" id="ptspBubble" style="display: none;">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+
+        <!-- Container Bubble & Tooltip Hover -->
+        <div class="ptsp-bubble-container" id="ptspBubbleContainer">
+            <div class="ptsp-tooltip">Layanan Whatsapp</div>
+            <div class="ptsp-bubble" id="ptspBubble">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+            </div>
         </div>
     `;
     document.body.appendChild(container);
@@ -140,11 +185,13 @@
         pekerjaanSelect.appendChild(opt);
     });
 
+    const bubbleContainer = document.getElementById('ptspBubbleContainer');
     const bubble = document.getElementById('ptspBubble');
     const modal = document.getElementById('ptspModal');
+    const btnClose = document.getElementById('ptspBtnClose');
     let isDomainValid = false;
 
-    // 3. LANGSUNG CEK INIT DATA / VALIDASI DOMAIN SAAT HOMEPAGE DIMUAT
+    // 3. Validasi Domain & Inisialisasi Saat Halaman Dimuat
     fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
         .then(async res => {
             const data = await res.json();
@@ -156,31 +203,44 @@
         .then(res => {
             if (res.status === 'success') {
                 isDomainValid = true;
-                document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
-                // Tampilkan bubble jika domain valid
-                bubble.style.display = 'flex';
+                document.getElementById('ptspHeaderTitle').innerHTML = `🏛️ Layanan SAPA\n${res.satker_name} <button type="button" class="ptsp-btn-close" id="ptspBtnClose">&times;</button>`;
+                
+                // Binding ulang event close button setelah innerHTML ter-update
+                document.getElementById('ptspBtnClose').addEventListener('click', closeModal);
+                
+                // Tampilkan container bubble
+                bubbleContainer.style.display = 'flex';
             }
         })
         .catch(err => {
             isDomainValid = false;
-            // Sembunyikan bubble dan modal
-            bubble.style.display = 'none';
+            bubbleContainer.style.display = 'none';
             modal.style.display = 'none';
-            // Langsung tampilkan pesan alert error saat web dimuat
             alert('⚠️ PTSP Widget Error: ' + err.message);
         });
 
-    // Toggle Modal Event Listener
-    bubble.addEventListener('click', () => {
+    // Fungsi Buka Modal (Sembunyikan Bubble)
+    function openModal() {
         if (!isDomainValid) return;
-        modal.style.display = (modal.style.display !== 'block') ? 'block' : 'none';
-    });
+        modal.style.display = 'block';
+        bubbleContainer.style.display = 'none'; // Sembunyikan bubble saat modal terbuka
+    }
+
+    // Fungsi Tutup Modal (Munculkan Bubble Kembali)
+    function closeModal() {
+        modal.style.display = 'none';
+        bubbleContainer.style.display = 'flex'; // Tampilkan bubble kembali saat modal ditutup
+    }
+
+    // Event Listeners
+    bubble.addEventListener('click', openModal);
+    if (btnClose) btnClose.addEventListener('click', closeModal);
 
     document.getElementById('ptsp_nik').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
-    // Form Submit Handler
+    // Submit Handler
     document.getElementById('ptspForm').addEventListener('submit', function (e) {
         e.preventDefault();
         
@@ -230,7 +290,7 @@
                 } else if (res.redirect_url) {
                     window.open(res.redirect_url, '_blank');
                 }
-                modal.style.display = 'none';
+                closeModal();
                 document.getElementById('ptspForm').reset();
             }
         })
