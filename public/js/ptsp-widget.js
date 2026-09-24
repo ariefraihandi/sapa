@@ -8,7 +8,20 @@
         return;
     }
 
-    // 1. Inject CSS Style
+    const daftarPekerjaan = [
+        'Pegawai Negeri Sipil',
+        'Karyawan swasta',
+        'Pedagang',
+        'Petani/pekebun',
+        'Nelayan/perikanan',
+        'Mengurus rumah tangga',
+        'Pelajar/Mahasiswa',
+        'Karyawan Honorer',
+        'Buruh harian lepas',
+        'Lainnya'
+    ];
+
+    // 1. Inject CSS
     const style = document.createElement('style');
     style.innerHTML = `
         .ptsp-bubble {
@@ -25,7 +38,7 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: none; overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .ptsp-header { background: #006633; color: #ffffff; padding: 14px 16px; font-weight: 600; font-size: 14px; text-align: center; }
+        .ptsp-header { background: #006633; color: #ffffff; padding: 14px 16px; font-weight: 600; font-size: 14px; text-align: center; white-space: pre-line; }
         .ptsp-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
         .ptsp-form-group { margin-bottom: 12px; }
         .ptsp-form-group label { display: block; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
@@ -44,43 +57,55 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML Modal & Bubble (NIK Dibuat Required)
+    // 2. Inject HTML
     const container = document.createElement('div');
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
             <div class="ptsp-header" id="ptspHeaderTitle">🏛️ Layanan SAPA</div>
             <form class="ptsp-body" id="ptspForm">
-                <div class="ptsp-form-group">
-                    <label>Jenis Akses Layanan *</label>
-                    <select class="ptsp-select" id="jenis_layanan" required>
-                        <option value="pesan">WhatsApp Chat / Pesan</option>
-                        <option value="telepon">Telepon Direct</option>
-                    </select>
+                <div class="ptsp-row">
+                    <div class="ptsp-col ptsp-form-group">
+                        <label>Jenis Layanan *</label>
+                        <select class="ptsp-select" id="ptsp_jenis_layanan" required>
+                            <option value="pesan">WhatsApp</option>
+                        </select>
+                    </div>
+                    <div class="ptsp-col ptsp-form-group">
+                        <label>Jenis Kelamin *</label>
+                        <select class="ptsp-select" id="ptsp_jenis_kelamin" required>
+                            <option value="">-- Pilih --</option>
+                            <option value="L">Laki-Laki</option>
+                            <option value="P">Perempuan</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="ptsp-form-group">
                     <label>Nama Lengkap *</label>
-                    <input type="text" class="ptsp-input" id="nama_responden" placeholder="Nama Anda" required />
+                    <input type="text" class="ptsp-input" id="ptsp_nama_responden" placeholder="Nama Anda" required />
                 </div>
+
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>No. HP / WhatsApp *</label>
-                        <input type="text" class="ptsp-input" id="no_hp" placeholder="0812..." required />
+                        <input type="text" class="ptsp-input" id="ptsp_no_hp" placeholder="0812..." required />
                     </div>
                     <div class="ptsp-col ptsp-form-group">
                         <label>NIK (16 Digit) *</label>
-                        <input type="text" class="ptsp-input" id="nik" minlength="16" maxlength="16" pattern="[0-9]{16}" placeholder="16 digit NIK" title="NIK harus berupa 16 digit angka" required />
+                        <input type="text" class="ptsp-input" id="ptsp_nik" minlength="16" maxlength="16" pattern="[0-9]{16}" placeholder="16 digit NIK" title="NIK harus berupa 16 digit angka" required />
                     </div>
                 </div>
+
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>Pekerjaan</label>
-                        <select class="ptsp-select" id="pekerjaan">
-                            <option value="">-- Loading --</option>
+                        <select class="ptsp-select" id="ptsp_pekerjaan">
+                            <option value="">-- Pilih Pekerjaan --</option>
                         </select>
                     </div>
                     <div class="ptsp-col ptsp-form-group">
                         <label>Pendidikan</label>
-                        <select class="ptsp-select" id="pendidikan">
+                        <select class="ptsp-select" id="ptsp_pendidikan">
                             <option value="">-- Pilih --</option>
                             <option value="SD">SD</option>
                             <option value="SMP">SMP</option>
@@ -92,63 +117,79 @@
                         </select>
                     </div>
                 </div>
+
                 <div class="ptsp-form-group">
                     <label>Keperluan / Informasi yang Dibutuhkan *</label>
-                    <textarea class="ptsp-textarea" id="keperluan" rows="2" placeholder="Tuliskan keperluan Anda..." required></textarea>
+                    <textarea class="ptsp-textarea" id="ptsp_keperluan" rows="2" placeholder="Tuliskan keperluan Anda..." required></textarea>
                 </div>
+
                 <button type="submit" class="ptsp-btn-submit" id="ptspSubmitBtn">Lanjutkan ke Petugas</button>
             </form>
         </div>
-        <div class="ptsp-bubble" id="ptspBubble">
+        <div class="ptsp-bubble" id="ptspBubble" style="display: none;">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
         </div>
     `;
     document.body.appendChild(container);
 
-    let isInitialized = false;
-
-    // 3. Event Toggle Modal & Load Init Data
-    const bubble = document.getElementById('ptspBubble');
-    const modal = document.getElementById('ptspModal');
-
-    bubble.addEventListener('click', () => {
-        const isOpening = (modal.style.display !== 'block');
-        modal.style.display = isOpening ? 'block' : 'none';
-
-        if (isOpening && !isInitialized) {
-            fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
-                .then(res => res.json())
-                .then(res => {
-                    if (res.status === 'success') {
-                        document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
-
-                        const pekerjaanSelect = document.getElementById('pekerjaan');
-                        pekerjaanSelect.innerHTML = '<option value="">-- Pilih Pekerjaan --</option>';
-                        if (res.pekerjaan_list && res.pekerjaan_list.length > 0) {
-                            res.pekerjaan_list.forEach(item => {
-                                const opt = document.createElement('option');
-                                opt.value = item;
-                                opt.innerText = item;
-                                pekerjaanSelect.appendChild(opt);
-                            });
-                        }
-                        isInitialized = true;
-                    }
-                })
-                .catch(err => console.error('Gagal mengambil data awal widget:', err));
-        }
+    const pekerjaanSelect = document.getElementById('ptsp_pekerjaan');
+    daftarPekerjaan.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.textContent = item;
+        pekerjaanSelect.appendChild(opt);
     });
 
-    // Validasi Input NIK hanya Menerima Angka saat Diketik
-    document.getElementById('nik').addEventListener('input', function (e) {
+    const bubble = document.getElementById('ptspBubble');
+    const modal = document.getElementById('ptspModal');
+    let isDomainValid = false;
+
+    // 3. LANGSUNG CEK INIT DATA / VALIDASI DOMAIN SAAT HOMEPAGE DIMUAT
+    fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok || data.status === 'error') {
+                throw new Error(data.message || 'Akses Widget Ditolak.');
+            }
+            return data;
+        })
+        .then(res => {
+            if (res.status === 'success') {
+                isDomainValid = true;
+                document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
+                // Tampilkan bubble jika domain valid
+                bubble.style.display = 'flex';
+            }
+        })
+        .catch(err => {
+            isDomainValid = false;
+            // Sembunyikan bubble dan modal
+            bubble.style.display = 'none';
+            modal.style.display = 'none';
+            // Langsung tampilkan pesan alert error saat web dimuat
+            alert('⚠️ PTSP Widget Error: ' + err.message);
+        });
+
+    // Toggle Modal Event Listener
+    bubble.addEventListener('click', () => {
+        if (!isDomainValid) return;
+        modal.style.display = (modal.style.display !== 'block') ? 'block' : 'none';
+    });
+
+    document.getElementById('ptsp_nik').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
-    // 4. Submit Handler
+    // Form Submit Handler
     document.getElementById('ptspForm').addEventListener('submit', function (e) {
         e.preventDefault();
         
-        const nikVal = document.getElementById('nik').value;
+        if (!isDomainValid) {
+            alert('⚠️ Akses ditolak. Domain tidak valid.');
+            return;
+        }
+
+        const nikVal = document.getElementById('ptsp_nik').value;
         if (nikVal.length !== 16) {
             alert('⚠️ NIK harus diisi tepat 16 digit angka.');
             return;
@@ -160,13 +201,14 @@
 
         const payload = {
             satker_id: satkerId,
-            jenis_layanan: document.getElementById('jenis_layanan').value,
-            nama_responden: document.getElementById('nama_responden').value,
-            no_hp: document.getElementById('no_hp').value,
+            jenis_layanan: document.getElementById('ptsp_jenis_layanan').value,
+            jenis_kelamin: document.getElementById('ptsp_jenis_kelamin').value,
+            nama_responden: document.getElementById('ptsp_nama_responden').value,
+            no_hp: document.getElementById('ptsp_no_hp').value,
             nik: nikVal,
-            pekerjaan: document.getElementById('pekerjaan').value || null,
-            pendidikan: document.getElementById('pendidikan').value || null,
-            keperluan: document.getElementById('keperluan').value
+            pekerjaan: document.getElementById('ptsp_pekerjaan').value || null,
+            pendidikan: document.getElementById('ptsp_pendidikan').value || null,
+            keperluan: document.getElementById('ptsp_keperluan').value
         };
 
         fetch(`${serverUrl}/api/ptsp/store-pengunjung`, {
@@ -174,7 +216,13 @@
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok || data.status === 'error') {
+                throw new Error(data.message || 'Gagal menyimpan data.');
+            }
+            return data;
+        })
         .then(res => {
             if (res.status === 'success') {
                 if (payload.jenis_layanan === 'telepon' && res.phone_number) {
@@ -184,8 +232,6 @@
                 }
                 modal.style.display = 'none';
                 document.getElementById('ptspForm').reset();
-            } else {
-                alert('⚠️ Gagal menyimpan data: ' + (res.message || 'Periksa kembali isian Anda.'));
             }
         })
         .catch(err => {
