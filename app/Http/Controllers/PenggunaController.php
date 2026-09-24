@@ -74,6 +74,7 @@ class PenggunaController extends Controller
             return redirect()->back()->with('error', 'Akun Anda tidak terhubung dengan Satuan Kerja manapun.');
         }
 
+    
         $satker = Satker::findOrFail($user->satker_id);
 
         return view('Pages.Pengguna.satker-profile', compact('satker'));
@@ -96,8 +97,11 @@ class PenggunaController extends Controller
             'email'             => 'nullable|email|max:255',
             'telepon'           => 'nullable|string|max:50',
             'whatsapp'          => 'nullable|string|max:50',
+            'website'           => 'nullable|url|max:255',
             'alamat'            => 'nullable|string',
             'logo'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'website.url'       => 'Format URL Website tidak valid (Gunakan format http:// atau https://).',
         ]);
 
         $data = [
@@ -106,6 +110,7 @@ class PenggunaController extends Controller
             'email'             => $request->email,
             'telepon'           => $request->telepon,
             'whatsapp'          => $request->whatsapp,
+            'website'           => $request->website,
             'alamat'            => $request->alamat,
         ];
 
