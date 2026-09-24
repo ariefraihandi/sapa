@@ -21,110 +21,47 @@
         'Lainnya'
     ];
 
-    // 1. Inject CSS Style Isolasi / Reset
+    // 1. Inject CSS
     const style = document.createElement('style');
     style.innerHTML = `
-        /* Reset CSS Isolasi Khusus Widget PTSP */
-        .ptsp-widget-root, .ptsp-widget-root * {
-            box-sizing: border-box !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-            line-height: 1.4 !important;
-            letter-spacing: normal !important;
-            text-transform: none !important;
-        }
-
-        /* Container Bubble Wrapper untuk Tooltip Hover */
-        .ptsp-bubble-container {
-            position: fixed; bottom: 20px; right: 20px; z-index: 9999999;
-            display: none; align-items: center; gap: 10px;
-        }
-
-        /* Tooltip Teks Hover */
-        .ptsp-tooltip {
-            background-color: #1e293b; color: #ffffff;
-            font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.18); opacity: 0; visibility: hidden;
-            transition: opacity 0.25s ease, visibility 0.25s ease;
-            white-space: nowrap; pointer-events: none;
-        }
-
-        .ptsp-bubble-container:hover .ptsp-tooltip {
-            opacity: 1; visibility: visible;
-        }
-
-        /* Bubble Button */
         .ptsp-bubble {
-            width: 56px; height: 56px; background-color: #25D366;
-            border-radius: 50%; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+            position: fixed; bottom: 20px; right: 20px; z-index: 999999;
+            width: 60px; height: 60px; background-color: #25D366;
+            border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: transform 0.2s ease, background-color 0.2s;
+            cursor: pointer; transition: transform 0.2s;
         }
-        .ptsp-bubble:hover { transform: scale(1.08); background-color: #20ba5a; }
-
-        /* Modal Box dengan Layout Flexbox Presisi */
+        .ptsp-bubble:hover { transform: scale(1.08); }
         .ptsp-modal {
-            position: fixed; bottom: 20px; right: 20px; z-index: 9999999;
-            width: 360px; max-width: calc(100vw - 30px); max-height: calc(100vh - 40px);
-            background: #ffffff; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: none;
-            flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0;
+            position: fixed; bottom: 90px; right: 20px; z-index: 999999;
+            width: 360px; max-width: 90vw; background: #ffffff; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: none; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
-        /* Header Modal dengan Tombol Close */
-        .ptsp-header {
-            background: #006633; color: #ffffff; padding: 12px 16px;
-            font-weight: 700; font-size: 13px; text-align: center; white-space: pre-line;
-            position: relative; flex-shrink: 0;
-        }
-
-        .ptsp-btn-close {
-            position: absolute; top: 8px; right: 10px;
-            background: transparent; border: none; color: #ffffff;
-            font-size: 22px; font-weight: 300; cursor: pointer; line-height: 1;
-            opacity: 0.8; transition: opacity 0.2s; padding: 2px 6px;
-        }
-        .ptsp-btn-close:hover { opacity: 1; }
-
-        /* Isi Form */
-        .ptsp-body {
-            padding: 14px 16px; overflow-y: auto; flex-grow: 1; margin: 0 !important;
-        }
-        .ptsp-form-group { margin-bottom: 10px !important; text-align: left !important; }
-        .ptsp-form-group label {
-            display: block !important; font-size: 11px !important; font-weight: 700 !important;
-            color: #334155 !important; margin-bottom: 3px !important;
-        }
+        .ptsp-header { background: #006633; color: #ffffff; padding: 14px 16px; font-weight: 600; font-size: 14px; text-align: center; white-space: pre-line; }
+        .ptsp-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
+        .ptsp-form-group { margin-bottom: 12px; }
+        .ptsp-form-group label { display: block; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
         .ptsp-input, .ptsp-select, .ptsp-textarea {
-            width: 100% !important; height: auto !important; padding: 7px 9px !important;
-            font-size: 12px !important; border: 1px solid #cbd5e1 !important;
-            border-radius: 6px !important; background-color: #ffffff !important;
-            color: #0f172a !important; outline: none !important; margin: 0 !important;
-            box-shadow: none !important;
+            width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #cccccc;
+            border-radius: 6px; box-sizing: border-box; outline: none;
         }
-        .ptsp-input:focus, .ptsp-select:focus, .ptsp-textarea:focus {
-            border-color: #006633 !important; ring: 2px rgba(0, 102, 51, 0.2) !important;
-        }
-        .ptsp-row { display: flex !important; gap: 8px !important; margin: 0 !important; }
-        .ptsp-col { flex: 1 !important; min-width: 0 !important; }
+        .ptsp-input:focus, .ptsp-select:focus, .ptsp-textarea:focus { border-color: #006633; }
+        .ptsp-row { display: flex; gap: 8px; }
+        .ptsp-col { flex: 1; }
         .ptsp-btn-submit {
-            width: 100% !important; background: #25D366 !important; color: #ffffff !important;
-            border: none !important; padding: 9px !important; border-radius: 6px !important;
-            font-weight: 700 !important; font-size: 13px !important; cursor: pointer !important;
-            margin-top: 4px !important; box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3) !important;
+            width: 100%; background: #25D366; color: white; border: none; padding: 10px;
+            border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 6px;
         }
-        .ptsp-btn-submit:hover { background: #20ba5a !important; }
+        .ptsp-btn-submit:hover { background: #20ba5a; }
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML dengan wrapper class ptsp-widget-root
+    // 2. Inject HTML
     const container = document.createElement('div');
-    container.className = 'ptsp-widget-root';
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
-            <div class="ptsp-header" id="ptspHeaderTitle">
-                🏛️ Layanan SAPA
-                <button type="button" class="ptsp-btn-close" id="ptspBtnClose" title="Tutup">&times;</button>
-            </div>
+            <div class="ptsp-header" id="ptspHeaderTitle">🏛️ Layanan SAPA</div>
             <form class="ptsp-body" id="ptspForm">
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
@@ -189,13 +126,8 @@
                 <button type="submit" class="ptsp-btn-submit" id="ptspSubmitBtn">Lanjutkan ke Petugas</button>
             </form>
         </div>
-
-        <!-- Container Bubble & Tooltip Hover -->
-        <div class="ptsp-bubble-container" id="ptspBubbleContainer">
-            <div class="ptsp-tooltip">Layanan Whatsapp</div>
-            <div class="ptsp-bubble" id="ptspBubble">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
-            </div>
+        <div class="ptsp-bubble" id="ptspBubble" style="display: none;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
         </div>
     `;
     document.body.appendChild(container);
@@ -208,12 +140,11 @@
         pekerjaanSelect.appendChild(opt);
     });
 
-    const bubbleContainer = document.getElementById('ptspBubbleContainer');
     const bubble = document.getElementById('ptspBubble');
     const modal = document.getElementById('ptspModal');
     let isDomainValid = false;
 
-    // 3. Validasi Domain & Inisialisasi
+    // 3. LANGSUNG CEK INIT DATA / VALIDASI DOMAIN SAAT HOMEPAGE DIMUAT
     fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
         .then(async res => {
             const data = await res.json();
@@ -225,36 +156,31 @@
         .then(res => {
             if (res.status === 'success') {
                 isDomainValid = true;
-                document.getElementById('ptspHeaderTitle').innerHTML = `🏛️ Layanan SAPA\n${res.satker_name} <button type="button" class="ptsp-btn-close" id="ptspBtnClose">&times;</button>`;
-                
-                document.getElementById('ptspBtnClose').addEventListener('click', closeModal);
-                bubbleContainer.style.display = 'flex';
+                document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
+                // Tampilkan bubble jika domain valid
+                bubble.style.display = 'flex';
             }
         })
         .catch(err => {
             isDomainValid = false;
-            bubbleContainer.style.display = 'none';
+            // Sembunyikan bubble dan modal
+            bubble.style.display = 'none';
             modal.style.display = 'none';
+            // Langsung tampilkan pesan alert error saat web dimuat
             alert('⚠️ PTSP Widget Error: ' + err.message);
         });
 
-    function openModal() {
+    // Toggle Modal Event Listener
+    bubble.addEventListener('click', () => {
         if (!isDomainValid) return;
-        modal.style.display = 'flex';
-        bubbleContainer.style.display = 'none';
-    }
-
-    function closeModal() {
-        modal.style.display = 'none';
-        bubbleContainer.style.display = 'flex';
-    }
-
-    bubble.addEventListener('click', openModal);
+        modal.style.display = (modal.style.display !== 'block') ? 'block' : 'none';
+    });
 
     document.getElementById('ptsp_nik').addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
+    // Form Submit Handler
     document.getElementById('ptspForm').addEventListener('submit', function (e) {
         e.preventDefault();
         
@@ -304,7 +230,7 @@
                 } else if (res.redirect_url) {
                     window.open(res.redirect_url, '_blank');
                 }
-                closeModal();
+                modal.style.display = 'none';
                 document.getElementById('ptspForm').reset();
             }
         })
