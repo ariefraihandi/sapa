@@ -145,7 +145,7 @@ class LayananController extends Controller
             'satker_id'       => $request->satker_id,
             'jenis_layanan'   => $request->jenis_layanan,
             'nama_responden'  => $request->nama_responden,
-            'nik'             => $request->nik,
+            'nik'             => $request->nik ?? null, // <-- AMAN: Diisi null jika tidak dikirim dari JS
             'no_hp'           => $request->no_hp,
             'email'           => $request->email,
             'jenis_kelamin'   => $request->jenis_kelamin,
@@ -153,7 +153,7 @@ class LayananController extends Controller
             'pekerjaan'       => $request->pekerjaan,
             'pendidikan'      => $request->pendidikan,
             'keperluan'       => $request->keperluan,
-            'is_tindak_lanjut'=> false,
+            'is_tindak_lanjut' => false,
         ]);
 
         return response()->json([

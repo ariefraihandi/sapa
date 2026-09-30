@@ -84,13 +84,13 @@ class PtspWidgetController extends Controller
                 ], 403);
             }
 
-            // 2. Validasi Input Form
+            // 2. Validasi Input Form (Sertakan NIK sebagai nullable)
             $validated = $request->validate([
                 'satker_id'      => 'required',
                 'jenis_layanan'  => 'required|in:pesan,telepon',
                 'nama_responden' => 'required|string|max:255',
+                'nik'            => 'nullable|string|max:16', // <-- Ditambahkan nullable agar eksplisit
                 'no_hp'          => 'required|string|max:20',
-                'nik'            => 'required|numeric',
                 'email'          => 'nullable|email|max:255',
                 'jenis_kelamin'  => 'required|in:L,P',
                 'usia'           => 'nullable|string|max:30',
@@ -98,11 +98,15 @@ class PtspWidgetController extends Controller
                 'pendidikan'     => 'nullable|string|max:255',
                 'keperluan'      => 'required|string',
             ], [
-                'nik.required'           => 'NIK wajib diisi.',
-                'nik.numeric'            => 'NIK hanya boleh berupa angka.',
-                'jenis_kelamin.required' => 'Jenis kelamin wajib dipilih.',
+                'nama_responden.required' => 'Nama lengkap wajib diisi.',
+                'no_hp.required'          => 'Nomor HP/WhatsApp wajib diisi.',
+                'jenis_kelamin.required'  => 'Jenis kelamin wajib dipilih.',
                 'jenis_kelamin.in'        => 'Pilihan jenis kelamin tidak valid.',
+                'keperluan.required'      => 'Keperluan wajib diisi.',
             ]);
+
+            // Pastikan nik bernilai null jika tidak dikirim dari JS
+            $validated['nik'] = $request->nik ?? null;
 
             // 3. Simpan Data Pengunjung ke Database
             $pengunjung = PengunjungPtsp::create($validated);
@@ -131,8 +135,7 @@ class PtspWidgetController extends Controller
             $pesanWa  = "Halo PTSP *" . $namaSatker . "*,\n\n";
             $pesanWa .= "Saya membutuhkan informasi/layanan:\n";
             $pesanWa .= "• *Nama:* " . $pengunjung->nama_responden . "\n";
-            $pesanWa .= "• *Jenis Kelamin:* " . $genderText . "\n";
-            $pesanWa .= "• *NIK:* " . $pengunjung->nik . "\n";
+            $pesanWa .= "• *Jenis Kelamin:* " . $genderText . "\n";            
             $pesanWa .= "• *No. HP:* " . $pengunjung->no_hp . "\n";
             $pesanWa .= "• *Keperluan:* " . $pengunjung->keperluan . "\n\n";
             $pesanWa .= "_Registrasi via Widget PTSP Online (ID: " . substr($pengunjung->id, 0, 8) . ")_";

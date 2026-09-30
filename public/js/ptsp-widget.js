@@ -21,6 +21,35 @@
         'Lainnya'
     ];
 
+    // Fungsi Cek Jam Kerja (WIB / GMT+7)
+    function isJamKerjaWIB() {
+        const now = new Date();
+        const utcHours = now.getUTCHours();
+        const wibHours = (utcHours + 7) % 24;
+        const wibMinutes = now.getUTCMinutes();
+        const day = now.getUTCDay(); // 0 = Minggu, 1 = Senin, ..., 5 = Jumat, 6 = Sabtu
+
+        const totalMenit = wibHours * 60 + wibMinutes;
+        const jamMulai = 8 * 60; // 08:00 WIB
+
+        // Sabtu & Minggu Libur
+        if (day === 0 || day === 6) return false;
+
+        // Senin - Kamis (08:00 - 16:30)
+        if (day >= 1 && day <= 4) {
+            const jamSelesaiKamis = 16 * 60 + 30; // 16:30
+            return totalMenit >= jamMulai && totalMenit <= jamSelesaiKamis;
+        }
+
+        // Jumat (08:00 - 17:00)
+        if (day === 5) {
+            const jamSelesaiJumat = 17 * 60; // 17:00
+            return totalMenit >= jamMulai && totalMenit <= jamSelesaiJumat;
+        }
+
+        return false;
+    }
+
     // 1. Inject CSS
     const style = document.createElement('style');
     style.innerHTML = `
@@ -49,25 +78,46 @@
         .ptsp-input:focus, .ptsp-select:focus, .ptsp-textarea:focus { border-color: #006633; }
         .ptsp-row { display: flex; gap: 8px; }
         .ptsp-col { flex: 1; }
-        .ptsp-btn-submit {
+        .ptsp-btn-submit, .ptsp-btn-next {
             width: 100%; background: #25D366; color: white; border: none; padding: 10px;
             border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 6px;
         }
-        .ptsp-btn-submit:hover { background: #20ba5a; }
+        .ptsp-btn-submit:hover, .ptsp-btn-next:hover { background: #20ba5a; }
+        
+        /* Style Tampilan Peringatan Jam Kerja */
+        .ptsp-notice-box {
+            background: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+            padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+            margin-bottom: 14px; text-align: center;
+        }
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML
+    // 2. Inject HTML (Ada Screen Notice & Screen Form)
     const container = document.createElement('div');
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
             <div class="ptsp-header" id="ptspHeaderTitle">🏛️ Layanan SAPA</div>
-            <form class="ptsp-body" id="ptspForm">
+            
+            <!-- Tampilan Peringatan Luar Jam Kerja -->
+            <div class="ptsp-body" id="ptspNoticeScreen" style="display: none;">
+                <div class="ptsp-notice-box">
+                    <strong>ℹ️ Informasi Jam Layanan</strong><br><br>
+                    Saat ini layanan sedang berada di <strong>luar jam operasional</strong>.<br>
+                    <small style="color: #666; display:block; margin: 6px 0;">(Senin–Kamis: 08.00–16.30 WIB | Jumat: 08.00–17.00 WIB)</small>
+                    Pesan Anda akan kami respon setelah jam kerja dimulai.
+                </div>
+                <button type="button" class="ptsp-btn-next" id="ptspBtnContinue">Tetap Lanjutkan</button>
+            </div>
+
+            <!-- Form PTSP Utama -->
+            <form class="ptsp-body" id="ptspForm" style="display: none;">
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>Jenis Layanan *</label>
                         <select class="ptsp-select" id="ptsp_jenis_layanan" required>
-                            <option value="pesan">WhatsApp</option>
+                            <option value="pesan" selected>WhatsApp</option>
+                            <option value="telepon">Telepon (WA)</option>
                         </select>
                     </div>
                     <div class="ptsp-col ptsp-form-group">
@@ -85,15 +135,9 @@
                     <input type="text" class="ptsp-input" id="ptsp_nama_responden" placeholder="Nama Anda" required />
                 </div>
 
-                <div class="ptsp-row">
-                    <div class="ptsp-col ptsp-form-group">
-                        <label>No. HP / WhatsApp *</label>
-                        <input type="text" class="ptsp-input" id="ptsp_no_hp" placeholder="0812..." required />
-                    </div>
-                    <div class="ptsp-col ptsp-form-group">
-                        <label>NIK (16 Digit) *</label>
-                        <input type="text" class="ptsp-input" id="ptsp_nik" minlength="16" maxlength="16" pattern="[0-9]{16}" placeholder="16 digit NIK" title="NIK harus berupa 16 digit angka" required />
-                    </div>
+                <div class="ptsp-form-group">
+                    <label>No. HP / WhatsApp *</label>
+                    <input type="text" class="ptsp-input" id="ptsp_no_hp" placeholder="08..." maxlength="15" required />
                 </div>
 
                 <div class="ptsp-row">
@@ -142,9 +186,12 @@
 
     const bubble = document.getElementById('ptspBubble');
     const modal = document.getElementById('ptspModal');
+    const noticeScreen = document.getElementById('ptspNoticeScreen');
+    const formScreen = document.getElementById('ptspForm');
+    const btnContinue = document.getElementById('ptspBtnContinue');
     let isDomainValid = false;
 
-    // 3. LANGSUNG CEK INIT DATA / VALIDASI DOMAIN SAAT HOMEPAGE DIMUAT
+    // 3. Validasi Domain saat dimuat
     fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
         .then(async res => {
             const data = await res.json();
@@ -157,26 +204,45 @@
             if (res.status === 'success') {
                 isDomainValid = true;
                 document.getElementById('ptspHeaderTitle').innerText = `🏛️ Layanan SAPA\n${res.satker_name}`;
-                // Tampilkan bubble jika domain valid
                 bubble.style.display = 'flex';
             }
         })
         .catch(err => {
             isDomainValid = false;
-            // Sembunyikan bubble dan modal
             bubble.style.display = 'none';
             modal.style.display = 'none';
-            // Langsung tampilkan pesan alert error saat web dimuat
             alert('⚠️ PTSP Widget Error: ' + err.message);
         });
 
     // Toggle Modal Event Listener
     bubble.addEventListener('click', () => {
         if (!isDomainValid) return;
-        modal.style.display = (modal.style.display !== 'block') ? 'block' : 'none';
+
+        if (modal.style.display !== 'block') {
+            modal.style.display = 'block';
+            
+            // Cek jam kerja saat widget diklik
+            if (!isJamKerjaWIB()) {
+                noticeScreen.style.display = 'block';
+                formScreen.style.display = 'none';
+            } else {
+                noticeScreen.style.display = 'none';
+                formScreen.style.display = 'block';
+            }
+        } else {
+            modal.style.display = 'none';
+        }
     });
 
-    document.getElementById('ptsp_nik').addEventListener('input', function () {
+    // Event tombol "Tetap Lanjutkan" pada screen notice
+    btnContinue.addEventListener('click', () => {
+        noticeScreen.style.display = 'none';
+        formScreen.style.display = 'block';
+    });
+
+    // Filter Input No HP (Hanya Angka)
+    const hpInput = document.getElementById('ptsp_no_hp');
+    hpInput.addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
@@ -189,9 +255,16 @@
             return;
         }
 
-        const nikVal = document.getElementById('ptsp_nik').value;
-        if (nikVal.length !== 16) {
-            alert('⚠️ NIK harus diisi tepat 16 digit angka.');
+        const noHpVal = hpInput.value;
+        if (!noHpVal.startsWith('08')) {
+            alert('⚠️ Nomor HP / WhatsApp harus diawali dengan "08".');
+            hpInput.focus();
+            return;
+        }
+
+        if (noHpVal.length < 10) {
+            alert('⚠️ Nomor HP / WhatsApp minimal 10 digit angka.');
+            hpInput.focus();
             return;
         }
 
@@ -204,8 +277,7 @@
             jenis_layanan: document.getElementById('ptsp_jenis_layanan').value,
             jenis_kelamin: document.getElementById('ptsp_jenis_kelamin').value,
             nama_responden: document.getElementById('ptsp_nama_responden').value,
-            no_hp: document.getElementById('ptsp_no_hp').value,
-            nik: nikVal,
+            no_hp: noHpVal,
             pekerjaan: document.getElementById('ptsp_pekerjaan').value || null,
             pendidikan: document.getElementById('ptsp_pendidikan').value || null,
             keperluan: document.getElementById('ptsp_keperluan').value
