@@ -6,9 +6,11 @@ use App\Models\SyaratPerkara;
 use App\Models\JenisPerkara;
 use App\Models\Satker;
 use App\Models\PtspDaerah;
+use App\Models\NotifikasiPtsp;
 use App\Models\PengunjungPtsp;
 use Illuminate\Http\Request;
 use App\Models\Pengaduan;
+use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -412,20 +414,17 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Data PTSP berhasil diperbarui!');
     }
 
-    public function indexPengunjung()
+    public function indexPengunjung(Request $request)
     {
         $user = Auth::user();
         $title = 'Daftar Pengunjung';
 
-        // Query awal dengan relasi satker
         $query = PengunjungPtsp::with('satker')->latest();
 
-        // Cek apakah user berasal dari MS Aceh atau ber-role admin
         if ($user->role !== 'admin') {
             $satkerName = $user->satker->satker_name ?? '';
             $isMsAceh = str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
 
-            // Jika bukan MS Aceh dan bukan Admin, filter hanya satker miliknya sendiri
             if (!$isMsAceh && $user->satker_id) {
                 $query->where('satker_id', $user->satker_id);
             }
@@ -434,6 +433,239 @@ class SyaratPerkaraController extends Controller
         $pengunjung = $query->paginate(15);
 
         return view('Pages.PTSP.pengunjung_index', compact('pengunjung', 'title'));
+    }
+
+    public function indexPengunjungv2(Request $request)
+    {
+        $user = Auth::user();
+        $userSatker = $user ? $user->satker : null;
+
+        // 💡 LOGIKA CEK & CREATE NOTIFIKASI SATKER
+        $notifPtsp = null;
+        if ($userSatker) {
+            $notifPtsp = NotifikasiPtsp::firstOrCreate(
+                ['satker_id' => $userSatker->id],
+                [
+                    'is_pengunjung' => false,
+                    'is_pengaduan'  => false,
+                ]
+            );
+        }
+
+        $isMsAceh = ($userSatker && (
+            strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
+            strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
+        ));
+
+        if ($request->ajax()) {
+            $type = $request->input('type'); // 'ms_aceh' atau 'daerah'
+            
+            // 💡 UPDATE: Tambahkan orderBy created_at desc agar data terbaru selalu di paling atas
+            $query = PengunjungPtsp::with('satker')
+                ->select('pengunjung_ptsp.*')
+                ->latest('created_at');
+
+            if ($isMsAceh) {
+                if ($type === 'ms_aceh') {
+                    $query->where('satker_id', $userSatker->id);
+                } else {
+                    $query->where('satker_id', '!=', $userSatker->id);
+                }
+            } else {
+                if ($userSatker) {
+                    $query->where('satker_id', $userSatker->id);
+                }
+            }
+
+            $tanggalFilter = $request->input('tanggal');
+            if (!empty($tanggalFilter)) {
+                $query->whereDate('created_at', $tanggalFilter);
+            }
+
+            return DataTables::of($query)
+                ->addIndexColumn()
+                ->addColumn('pemohon_html', function ($row) {
+                    $jkBadge = $row->jenis_kelamin == 'L' 
+                        ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1" style="font-size:10px;">Laki-laki</span>' 
+                        : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1" style="font-size:10px;">Perempuan</span>';
+
+                    $pekerjaanBadge = $row->pekerjaan 
+                        ? '<span class="badge bg-light text-dark border me-1" style="font-size:10px;"><i class="fa-solid fa-briefcase me-1"></i>' . e($row->pekerjaan) . '</span>' 
+                        : '';
+
+                    $uuidShort = $row->id ? substr((string)$row->id, 0, 8) : '-';
+                    $idBadge = '<span class="badge bg-secondary-subtle text-secondary border me-1" style="font-size:10px;"><i class="fa-solid fa-hashtag me-1"></i>' . $uuidShort . '</span>';
+
+                    $waktuBadge = $row->created_at 
+                        ? '<span class="badge bg-light text-muted border" style="font-size:10px;"><i class="fa-regular fa-clock me-1"></i>' . $row->created_at->format('d/m/Y H:i') . ' WIB</span>' 
+                        : '';
+
+                    return '
+                        <div class="fw-bold text-dark lh-sm mb-1">' . e($row->nama_responden) . '</div>
+                        <div class="d-flex flex-wrap align-items-center gap-1">
+                            ' . $jkBadge . '
+                            ' . $pekerjaanBadge . '
+                            ' . $idBadge . '
+                            ' . $waktuBadge . '
+                        </div>
+                    ';
+                })
+                ->filterColumn('pemohon_html', function($query, $keyword) {
+                    $query->where(function($q) use ($keyword) {
+                        $q->where('pengunjung_ptsp.nama_responden', 'LIKE', "%{$keyword}%")
+                        ->orWhere('pengunjung_ptsp.id', 'LIKE', "%{$keyword}%")
+                        ->orWhere('pengunjung_ptsp.pekerjaan', 'LIKE', "%{$keyword}%");
+                    });
+                })
+                ->addColumn('tujuan_layanan_html', function ($row) {
+                    $satkerName = $row->satker->satker_short_name ?? '-';
+                    $layanan = ucfirst($row->jenis_layanan ?? 'Pesan');
+
+                    return '
+                        <div class="mb-1"><span class="badge bg-light text-dark border"><i class="fa-solid fa-building me-1 text-success"></i>' . e($satkerName) . '</span></div>
+                        <div><span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-message me-1"></i>' . e($layanan) . '</span></div>
+                    ';
+                })
+                ->addColumn('kontak_wa_html', function ($row) {
+                    if (!$row->no_hp) return '<span class="text-muted small">-</span>';
+                    
+                    $phone = preg_replace('/[^0-9]/', '', $row->no_hp);
+                    if (str_starts_with($phone, '0')) {
+                        $phone = '62' . substr($phone, 1);
+                    }
+
+                    if ($row->is_tindak_lanjut) {
+                        $btnClass = 'btn-outline-success';
+                        $statusText = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
+                    } else {
+                        $btnClass = 'btn-danger';
+                        $statusText = '<i class="fa-brands fa-whatsapp me-1"></i>Hubungi Pemohon';
+                    }
+
+                    return '
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <a href="https://wa.me/' . $phone . '" target="_blank" 
+                            id="btn-wa-' . $row->id . '" 
+                            onclick="markAsFollowedUp(\'' . $row->id . '\')" 
+                            class="btn btn-sm ' . $btnClass . ' fw-bold px-2 py-1" style="font-size: 11px;">
+                                ' . $statusText . '
+                            </a>
+                            <span class="text-muted fw-semibold" style="font-size: 11px;">' . e($row->no_hp) . '</span>
+                        </div>
+                    ';
+                })
+                ->addColumn('action', function ($row) {
+                    return '
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border dropdown-toggle fw-bold py-1 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size:12px;">
+                                Aksi
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                <li>
+                                    <a class="dropdown-item py-1" href="#" data-bs-toggle="modal" data-bs-target="#modalDetailPengunjung' . $row->id . '">
+                                        <i class="fa-solid fa-eye text-info me-2"></i>Detail
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item py-1" href="#" data-bs-toggle="modal" data-bs-target="#modalEditPengunjung' . $row->id . '">
+                                        <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <a class="dropdown-item py-1 text-danger" href="#" data-bs-toggle="modal" data-bs-target="#modalDeletePengunjung' . $row->id . '">
+                                        <i class="fa-solid fa-trash me-2"></i>Hapus
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    ';
+                })
+                ->rawColumns(['pemohon_html', 'tujuan_layanan_html', 'kontak_wa_html', 'action'])
+                ->make(true);
+        }
+
+        // 💡 UPDATE: Menggunakan latest('created_at') untuk query non-AJAX
+        $pengunjung = PengunjungPtsp::with('satker')->latest('created_at')->get();
+        
+        // Kirim status sound ke View (True jika is_pengunjung == 1)
+        $isSoundActive = $notifPtsp ? (bool)$notifPtsp->is_pengunjung : false;
+
+        return view('Pages.PTSP.pengunjung_v2', compact('pengunjung', 'isMsAceh', 'isSoundActive'));
+    }
+
+    // 💡 FUNGSI UNTUK TOGGLE STATUS SOUND DI DATABASE
+    public function toggleSoundPengunjung(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user || !$user->satker) {
+            return response()->json(['success' => false, 'message' => 'User tidak terautentikasi / satker tidak ditemukan'], 401);
+        }
+
+        $notif = NotifikasiPtsp::firstOrCreate(
+            ['satker_id' => $user->satker->id],
+            ['is_pengunjung' => false, 'is_pengaduan' => false]
+        );
+
+        // Toggle nilai is_pengunjung (1 jadi 0, 0 jadi 1)
+        $notif->is_pengunjung = !$notif->is_pengunjung;
+        $notif->save();
+
+        return response()->json([
+            'success' => true,
+            'is_active' => (bool)$notif->is_pengunjung,
+            'message' => $notif->is_pengunjung ? 'Suara notifikasi diaktifkan!' : 'Suara notifikasi dinonaktifkan!'
+        ]);
+    }
+
+    public function checkNewPengunjung(Request $request)
+    {
+        $user = Auth::user();
+        $userSatker = $user ? $user->satker : null;
+
+        $isMsAceh = ($userSatker && (
+            strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
+            strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
+        ));
+
+        if ($isMsAceh) {
+            // Ambil data pengunjung paling baru khusus MS Aceh
+            $latestMsAcehRecord = PengunjungPtsp::where('satker_id', $userSatker->id)
+                ->latest('created_at')
+                ->first();
+
+            // Ambil data pengunjung paling baru dari seluruh Satker Daerah
+            $latestDaerahRecord = PengunjungPtsp::where('satker_id', '!=', $userSatker->id)
+                ->latest('created_at')
+                ->first();
+
+            // Gunakan kombinasi ID + Timestamp untuk deteksi yang akurat
+            $latestMsAcehKey = $latestMsAcehRecord ? $latestMsAcehRecord->id . '_' . $latestMsAcehRecord->created_at->timestamp : null;
+            $latestDaerahKey = $latestDaerahRecord ? $latestDaerahRecord->id . '_' . $latestDaerahRecord->created_at->timestamp : null;
+
+            return response()->json([
+                'status' => 'success',
+                'is_ms_aceh' => true,
+                'latest_ms_aceh_id' => $latestMsAcehKey,
+                'latest_daerah_id' => $latestDaerahKey,
+            ]);
+        } else {
+            // Satker Daerah biasa
+            $latestKey = null;
+            if ($userSatker) {
+                $latestRecord = PengunjungPtsp::where('satker_id', $userSatker->id)
+                    ->latest('created_at')
+                    ->first();
+
+                $latestKey = $latestRecord ? $latestRecord->id . '_' . $latestRecord->created_at->timestamp : null;
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'is_ms_aceh' => false,
+                'latest_id' => $latestKey,
+            ]);
+        }
     }
 
     public function updatePengunjung(Request $request, $id)

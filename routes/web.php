@@ -14,6 +14,7 @@ use App\Http\Middleware\CheckMenuAccess;
 | Public Routes (Akses Tanpa Login)
 |--------------------------------------------------------------------------
 */
+Route::get('/pengunjung/check-new', [SyaratPerkaraController::class, 'checkNewPengunjung'])->name('ptsp.pengunjung.check-new');
 Route::get('/', [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
 Route::get('/buku-tamu', [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
 Route::post('/buku-tamu', [LayananController::class, 'store'])->name('buku-tamu.store');
@@ -89,6 +90,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/pengunjung/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjut'])->name('ptsp.pengunjung.tindak-lanjut');
         Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
+
+        // Action Toggle Sound (Disimpan di SyaratPerkaraController)
+        Route::post('/pengunjung/toggle-sound', [SyaratPerkaraController::class, 'toggleSoundPengunjung'])->name('ptsp.pengunjung.toggle-sound');
     });
 
 
@@ -115,7 +119,7 @@ Route::middleware(['auth'])->group(function () {
 
         // PTSP / Informasi & Pengaduan Group Views
         Route::prefix('ptsp')->group(function () {
-            Route::get('/pengunjung', [SyaratPerkaraController::class, 'indexPengunjung'])->name('ptsp.pengunjung.index');
+            Route::get('/pengunjung', [SyaratPerkaraController::class, 'indexPengunjungv2'])->name('ptsp.pengunjung.index');
             Route::get('/pengaduan', [SyaratPerkaraController::class, 'indexPengaduan'])->name('ptsp.pengaduan.index');
             Route::get('/daftar-ptsp', [SyaratPerkaraController::class, 'daftarPtsp'])->name('ptsp.daftar-ptsp.index');
             Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'index'])->name('ptsp.syarat-perkara.index');

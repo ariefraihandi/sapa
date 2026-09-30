@@ -9,8 +9,9 @@
             <p class="text-muted small mb-0">
                 @php
                     $user = Auth::user();
-                    $satkerName = $user->satker->satker_name ?? '';
-                    $isMsAceh = ($user->role === 'admin') || str_contains(strtolower($satkerName), 'mahkamah syar\'iyah aceh') || str_contains(strtolower($satkerName), 'ms aceh');
+                    $satkerName = strtolower($user->satker->satker_name ?? '');
+                    // Gunakan str_contains tanpa backslash manual pada string 'syari'
+                    $isMsAceh = ($user->role === 'admin') || str_contains($satkerName, 'mahkamah syari') || str_contains($satkerName, 'ms aceh');
                 @endphp
 
                 @if($isMsAceh)
@@ -30,6 +31,18 @@
         </div>
     @endif
 
+    <!-- TOMBOL & AUDIO NOTIFIKASI -->
+    <div class="mb-3 d-flex align-items-center gap-2">
+        <button id="btnToggleSound" class="btn btn-sm btn-outline-success">
+            <i class="fa-solid fa-volume-xmark me-1" id="iconSound"></i> 
+            <span id="textSound">Klik untuk Mengaktifkan Suara Notifikasi</span>
+        </button>
+    </div>
+
+    <audio id="notifAudio" preload="auto">
+        <source src="{{ asset('assets/sounds/notification.mp3') }}" type="audio/mpeg">
+    </audio>
+
     <!-- TABEL DATA PENGUNJUNG -->
     <div class="card border-0 shadow-sm" style="border-radius: 16px;">
         <div class="card-body p-4">
@@ -46,103 +59,8 @@
                             <th class="text-center" style="width: 100px;">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        @forelse($pengunjung as $index => $item)
-                            @php
-                                $no_hp_clean = preg_replace('/[^0-9]/', '', $item->no_hp);
-                                if (str_starts_with($no_hp_clean, '0')) {
-                                    $no_hp_clean = '62' . substr($no_hp_clean, 1);
-                                }
-                                $link_wa = "https://wa.me/" . $no_hp_clean;
-                            @endphp
-                            <tr>
-                                <td>{{ $pengunjung->firstItem() + $index }}</td>
-                                <td>
-                                    <strong class="d-block text-dark fs-15">{{ $item->nama_responden }}</strong>
-                                    <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
-                                        <span class="badge {{ $item->jenis_kelamin == 'L' ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.7rem;">
-                                            {{ $item->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}
-                                        </span>
-                                        @if($item->pekerjaan)
-                                            <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">
-                                                <i class="fa-solid fa-briefcase me-1 text-secondary"></i>{{ $item->pekerjaan }}
-                                            </span>
-                                        @endif
-                                        @if($item->nik)
-                                            <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;">
-                                                NIK: {{ $item->nik }}
-                                            </span>
-                                        @endif
-                                    </div>
-                                    <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
-                                        <i class="fa-solid fa-clock me-1"></i>{{ $item->created_at->format('d M Y - H:i') }} WIB
-                                    </small>
-                                </td>
-
-                                <td>
-                                    <span class="badge bg-light text-dark border">
-                                        <i class="fa-solid fa-building-columns me-1 text-success"></i>
-                                        {{ $item->satker->satker_short_name ?? $item->satker->satker_name ?? 'MS Aceh' }}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    @if($item->jenis_layanan === 'pesan')
-                                        <span class="badge bg-success text-white fw-semibold px-2 py-1">
-                                            <i class="fa-brands fa-whatsapp me-1"></i> Pesan
-                                        </span>
-                                    @else
-                                        <span class="badge bg-primary text-white fw-semibold px-2 py-1">
-                                            <i class="fa-solid fa-phone me-1"></i> Telepon
-                                        </span>
-                                    @endif
-                                </td>
-
-                                <td>
-                                    <div class="p-2 rounded bg-light border text-secondary small text-wrap" style="max-width: 280px;">
-                                        {{ Str::limit($item->keperluan ?: 'Tidak ada catatan keperluan', 70) }}
-                                    </div>
-                                </td>
-
-                                <td class="text-center">
-                                    <a href="{{ $link_wa }}" 
-                                       target="_blank" 
-                                       onclick="markAsFollowedUp('{{ $item->id }}')"
-                                       id="btn-wa-{{ $item->id }}"
-                                       class="btn btn-sm {{ $item->is_tindak_lanjut ? 'btn-success' : 'btn-danger' }} px-3 py-1" 
-                                       style="border-radius: 50px; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">
-                                        <i class="fa-brands fa-whatsapp me-1"></i> {{ $item->no_hp }}
-                                    </a>
-                                </td>
-
-                                <td class="text-center">
-                                    <div class="dropdown">
-                                        <button type="button" class="btn btn-light btn-sm dropdown-toggle border" data-bs-toggle="dropdown">
-                                            Aksi
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-end shadow border-0">
-                                            <a class="dropdown-item text-primary" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalDetailPengunjung{{ $loop->index }}">
-                                                <i class="fa-solid fa-eye me-2"></i> Detail
-                                            </a>
-                                            <a class="dropdown-item text-warning" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalEditPengunjung{{ $loop->index }}">
-                                                <i class="fa-solid fa-pen-to-square me-2"></i> Edit
-                                            </a>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item text-danger" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#modalDeletePengunjung{{ $loop->index }}">
-                                                <i class="fa-solid fa-trash me-2"></i> Hapus
-                                            </a>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="text-center py-5 text-muted">
-                                    <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>
-                                    Belum ada data pengunjung PTSP yang terekam.
-                                </td>
-                            </tr>
-                        @endforelse
+                    <tbody id="pengunjungTableBody">
+                        @include('Pages.PTSP.partials.pengunjung_table_body')
                     </tbody>
                 </table>
             </div>
@@ -155,7 +73,7 @@
 </div>
 
 <!-- ========================== MODALS ACTION ========================== -->
-@foreach($pengunjung as $index => $item)
+@foreach($pengunjung as $index =>$item)
     <!-- 1. MODAL DETAIL -->
     <div class="modal fade" id="modalDetailPengunjung{{ $loop->index }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -176,7 +94,7 @@
                         <tr><td class="text-muted">Waktu Kunjungan</td><td>:</td><td>{{ $item->created_at->format('d F Y - H:i') }} WIB</td></tr>
                     </table>
                     <hr>
-                    <label class="fw-bold mb-1">Keperluan Consultation:</label>
+                    <label class="fw-bold mb-1">Keperluan:</label>
                     <div class="p-2 bg-light border rounded small">{{ $item->keperluan ?: 'Tidak ada rincian keperluan.' }}</div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button></div>
@@ -258,25 +176,143 @@
 @endforeach
 
 <script>
-function markAsFollowedUp(id) {
-    fetch(`/ptsp/pengunjung/${id}/tindak-lanjut`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if(data.success) {
-            const btn = document.getElementById(`btn-wa-${id}`);
-            if (btn) {
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-success');
+    function markAsFollowedUp(id) {
+        fetch(`/ptsp/pengunjung/${id}/tindak-lanjut`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                const btn = document.getElementById(`btn-wa-${id}`);
+                if (btn) {
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-success');
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const notifAudio = document.getElementById('notifAudio');
+        const btnToggleSound = document.getElementById('btnToggleSound');
+        const iconSound = document.getElementById('iconSound');
+        const textSound = document.getElementById('textSound');
+
+        let soundEnabled = false;
+        let lastLatestId = null;
+
+        // 1. Fungsi Cek & Minta Izin Suara/Notifikasi Browser
+        function checkAndRequestAudioPermission() {
+            // Cek apakah browser mendukung Audio Context
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const audioCtx = new AudioContext();
+                
+                if (audioCtx.state === 'suspended') {
+                    // Jika audio masih diblokir browser, ubah tampilan tombol agar user sadar
+                    textSound.innerText = '⚠️ Izin Suara Belum Aktif (Klik Disini)';
+                    btnToggleSound.classList.remove('btn-outline-success');
+                    btnToggleSound.classList.add('btn-warning', 'text-dark');
+                } else {
+                    activateAudioState();
+                }
             }
         }
-    })
-    .catch(error => console.error('Error:', error));
-}
+
+        function activateAudioState() {
+            notifAudio.play().then(() => {
+                notifAudio.pause();
+                notifAudio.currentTime = 0;
+                soundEnabled = true;
+                
+                btnToggleSound.classList.remove('btn-outline-success', 'btn-warning');
+                btnToggleSound.classList.add('btn-success', 'text-white');
+                iconSound.className = 'fa-solid fa-volume-high me-1';
+                textSound.innerText = 'Suara Notifikasi Aktif';
+            }).catch(err => {
+                console.log('Menunggu interaksi pengguna untuk izin audio...');
+            });
+        }
+
+        // Cek status izin saat halaman dimuat
+        checkAndRequestAudioPermission();
+
+        // Tombol manual untuk memberikan izin
+        btnToggleSound.addEventListener('click', function() {
+            activateAudioState();
+        });
+
+        // Berikan izin otomatis saat ada interaksi klik di mana saja pada halaman
+        document.body.addEventListener('click', function() {
+            if (!soundEnabled) {
+                activateAudioState();
+            }
+        }, { once: true });
+
+        // 2. Play Audio Notifikasi
+        function playNotifSound() {
+            if (soundEnabled) {
+                notifAudio.currentTime = 0;
+                notifAudio.play().catch(e => {
+                    console.error('Gagal memutar audio, minta ulang izin:', e);
+                    soundEnabled = false;
+                    checkAndRequestAudioPermission();
+                });
+            }
+        }
+
+        // 3. Pengecekan Data Pengunjung Baru & Reload Tabel Otomatis
+        function checkNewData() {
+            fetch("{{ route('ptsp.pengunjung.check-new') }}?load_table=1", {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.latest_id) {
+                    if (lastLatestId === null) {
+                        lastLatestId = data.latest_id;
+                    } 
+                    else if (lastLatestId !== data.latest_id) {
+                        lastLatestId = data.latest_id;
+                        
+                        // Putar Suara
+                        playNotifSound();
+
+                        // Perbarui tabel secara instan
+                        if (data.html) {
+                            document.getElementById('pengunjungTableBody').innerHTML = data.html;
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error('Error checking new data:', err));
+        }
+
+        checkNewData();
+
+        // 4. Interval Acak (1 sampai 5 Menit)
+        function scheduleNextCheck() {
+            const minMinutes = 1;
+            const maxMinutes = 5;
+            const randomTime = Math.floor(Math.random() * ((maxMinutes - minMinutes) * 60 * 1000 + 1)) + (minMinutes * 60 * 1000);
+
+            console.log(`Pengecekan pengunjung berikutnya dalam ${Math.round(randomTime / 1000)} detik.`);
+
+            setTimeout(function () {
+                checkNewData();
+                scheduleNextCheck();
+            }, randomTime);
+        }
+
+        scheduleNextCheck();
+    });
 </script>
 @endsection
