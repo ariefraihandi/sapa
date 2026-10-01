@@ -21,7 +21,7 @@
         'Lainnya'
     ];
 
-    // Fungsi Cek Jam Kerja (WIB / GMT+7)
+    // Cek Jam Kerja (WIB / GMT+7)
     function isJamKerjaWIB() {
         const now = new Date();
         const utcHours = now.getUTCHours();
@@ -32,18 +32,17 @@
         const totalMenit = wibHours * 60 + wibMinutes;
         const jamMulai = 8 * 60; // 08:00 WIB
 
-        // Sabtu & Minggu Libur
         if (day === 0 || day === 6) return false;
 
         // Senin - Kamis (08:00 - 16:30)
         if (day >= 1 && day <= 4) {
-            const jamSelesaiKamis = 16 * 60 + 30; // 16:30
+            const jamSelesaiKamis = 16 * 60 + 30;
             return totalMenit >= jamMulai && totalMenit <= jamSelesaiKamis;
         }
 
         // Jumat (08:00 - 17:00)
         if (day === 5) {
-            const jamSelesaiJumat = 17 * 60; // 17:00
+            const jamSelesaiJumat = 17 * 60;
             return totalMenit >= jamMulai && totalMenit <= jamSelesaiJumat;
         }
 
@@ -63,12 +62,12 @@
         .ptsp-bubble:hover { transform: scale(1.08); }
         .ptsp-modal {
             position: fixed; bottom: 90px; right: 20px; z-index: 999999;
-            width: 360px; max-width: 90vw; background: #ffffff; border-radius: 12px;
+            width: 380px; max-width: 90vw; background: #ffffff; border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: none; overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .ptsp-header { background: #006633; color: #ffffff; padding: 14px 16px; font-weight: 600; font-size: 14px; text-align: center; white-space: pre-line; }
-        .ptsp-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
+        .ptsp-body { padding: 16px; max-height: 75vh; overflow-y: auto; }
         .ptsp-form-group { margin-bottom: 12px; }
         .ptsp-form-group label { display: block; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
         .ptsp-input, .ptsp-select, .ptsp-textarea {
@@ -78,13 +77,32 @@
         .ptsp-input:focus, .ptsp-select:focus, .ptsp-textarea:focus { border-color: #006633; }
         .ptsp-row { display: flex; gap: 8px; }
         .ptsp-col { flex: 1; }
+        
+        /* Tombol Pilihan Utama */
+        .ptsp-menu-btn {
+            width: 100%; padding: 14px; margin-bottom: 10px; border: 1px solid #e2e8f0;
+            border-radius: 8px; background: #f8fafc; text-align: left; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 12px;
+        }
+        .ptsp-menu-btn:hover { background: #f1f5f9; border-color: #006633; }
+        .ptsp-menu-icon { font-size: 20px; width: 32px; text-align: center; }
+        .ptsp-menu-title { font-weight: bold; font-size: 13px; color: #1e293b; display: block; }
+        .ptsp-menu-desc { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+
         .ptsp-btn-submit, .ptsp-btn-next {
             width: 100%; background: #25D366; color: white; border: none; padding: 10px;
             border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 6px;
         }
         .ptsp-btn-submit:hover, .ptsp-btn-next:hover { background: #20ba5a; }
+        .ptsp-btn-danger { background: #d97706; }
+        .ptsp-btn-danger:hover { background: #b45309; }
         
-        /* Style Tampilan Peringatan Jam Kerja */
+        .ptsp-btn-back {
+            background: none; border: none; color: #64748b; font-size: 12px; cursor: pointer;
+            padding: 4px 0; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .ptsp-btn-back:hover { color: #006633; text-decoration: underline; }
+
         .ptsp-notice-box {
             background: #fff3cd; color: #856404; border: 1px solid #ffeeba;
             padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.5;
@@ -93,13 +111,13 @@
     `;
     document.head.appendChild(style);
 
-    // 2. Inject HTML (Ada Screen Notice & Screen Form)
+    // 2. Inject HTML Modal
     const container = document.createElement('div');
     container.innerHTML = `
         <div class="ptsp-modal" id="ptspModal">
             <div class="ptsp-header" id="ptspHeaderTitle">🏛️ Layanan SAPA</div>
             
-            <!-- Tampilan Peringatan Luar Jam Kerja -->
+            <!-- 1. Tampilan Peringatan Luar Jam Kerja -->
             <div class="ptsp-body" id="ptspNoticeScreen" style="display: none;">
                 <div class="ptsp-notice-box">
                     <strong>ℹ️ Informasi Jam Layanan</strong><br><br>
@@ -110,8 +128,31 @@
                 <button type="button" class="ptsp-btn-next" id="ptspBtnContinue">Tetap Lanjutkan</button>
             </div>
 
-            <!-- Form PTSP Utama -->
-            <form class="ptsp-body" id="ptspForm" style="display: none;">
+            <!-- 2. Screen Pilihan Menu Utama -->
+            <div class="ptsp-body" id="ptspMenuScreen" style="display: none;">
+                <p style="text-align: center; font-size: 13px; color: #475569; margin-top: 0; margin-bottom: 14px;">
+                    Silakan pilih jenis layanan yang Anda butuhkan:
+                </p>
+                <button class="ptsp-menu-btn" id="ptspBtnSelectKonsultasi">
+                    <span class="ptsp-menu-icon">💬</span>
+                    <div>
+                        <span class="ptsp-menu-title">Layanan Informasi / Konsultasi</span>
+                        <span class="ptsp-menu-desc">Tanya jawab persyaratan, perkara, & layanan PTSP</span>
+                    </div>
+                </button>
+                <button class="ptsp-menu-btn" id="ptspBtnSelectPengaduan">
+                    <span class="ptsp-menu-icon">⚠️</span>
+                    <div>
+                        <span class="ptsp-menu-title">Laporan Pengaduan</span>
+                        <span class="ptsp-menu-desc">Sampaikan pengaduan layanan atau perilaku petugas</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- 3. Form Konsultasi / Informasi -->
+            <form class="ptsp-body" id="ptspFormKonsultasi" style="display: none;">
+                <button type="button" class="ptsp-btn-back ptspBtnGoMenu">← Kembali ke Pilihan Menu</button>
+                
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>Jenis Layanan *</label>
@@ -137,14 +178,14 @@
 
                 <div class="ptsp-form-group">
                     <label>No. HP / WhatsApp *</label>
-                    <input type="text" class="ptsp-input" id="ptsp_no_hp" placeholder="08..." maxlength="15" required />
+                    <input type="text" class="ptsp-input ptsp-input-hp" id="ptsp_no_hp" placeholder="08..." maxlength="15" required />
                 </div>
 
                 <div class="ptsp-row">
                     <div class="ptsp-col ptsp-form-group">
                         <label>Pekerjaan</label>
-                        <select class="ptsp-select" id="ptsp_pekerjaan">
-                            <option value="">-- Pilih Pekerjaan --</option>
+                        <select class="ptsp-select ptsp-pekerjaan-select" id="ptsp_pekerjaan">
+                            <option value="">-- Pilih --</option>
                         </select>
                     </div>
                     <div class="ptsp-col ptsp-form-group">
@@ -167,15 +208,45 @@
                     <textarea class="ptsp-textarea" id="ptsp_keperluan" rows="2" placeholder="Tuliskan keperluan Anda..." required></textarea>
                 </div>
 
-                <button type="submit" class="ptsp-btn-submit" id="ptspSubmitBtn">Lanjutkan ke Petugas</button>
+                <button type="submit" class="ptsp-btn-submit" id="ptspSubmitKonsultasiBtn">Lanjutkan ke Petugas</button>
+            </form>
+
+            <!-- 4. Form Pengaduan -->
+            <form class="ptsp-body" id="ptspFormPengaduan" style="display: none;">
+                <button type="button" class="ptsp-btn-back ptspBtnGoMenu">← Kembali ke Pilihan Menu</button>
+                
+                <div class="ptsp-form-group">
+                    <label>Nama Pelapor *</label>
+                    <input type="text" class="ptsp-input" id="ptsp_p_nama" placeholder="Nama Lengkap Anda" required />
+                </div>
+
+                <div class="ptsp-row">
+                    <div class="ptsp-col ptsp-form-group">
+                        <label>No. HP / WhatsApp *</label>
+                        <input type="text" class="ptsp-input ptsp-input-hp" id="ptsp_p_hp" placeholder="08..." maxlength="15" required />
+                    </div>
+                    <div class="ptsp-col ptsp-form-group">
+                        <label>NIK / No. KTP (Opsional)</label>
+                        <input type="text" class="ptsp-input" id="ptsp_p_nik" placeholder="16 Digit NIK" maxlength="16" />
+                    </div>
+                </div>
+
+                <div class="ptsp-form-group">
+                    <label>Uraian Pengaduan *</label>
+                    <textarea class="ptsp-textarea" id="ptsp_p_uraian" rows="3" placeholder="Tuliskan detail pengaduan Anda secara ringkas dan jelas..." required></textarea>
+                </div>
+
+                <button type="submit" class="ptsp-btn-submit ptsp-btn-danger" id="ptspSubmitPengaduanBtn">Lanjutkan ke Petugas</button>
             </form>
         </div>
+
         <div class="ptsp-bubble" id="ptspBubble" style="display: none;">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.46 3.53 1.27 5L2 22l5.18-1.24C8.61 21.55 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
         </div>
     `;
     document.body.appendChild(container);
 
+    // Populate Select Pekerjaan
     const pekerjaanSelect = document.getElementById('ptsp_pekerjaan');
     daftarPekerjaan.forEach(item => {
         const opt = document.createElement('option');
@@ -184,14 +255,27 @@
         pekerjaanSelect.appendChild(opt);
     });
 
+    // Element References
     const bubble = document.getElementById('ptspBubble');
     const modal = document.getElementById('ptspModal');
     const noticeScreen = document.getElementById('ptspNoticeScreen');
-    const formScreen = document.getElementById('ptspForm');
-    const btnContinue = document.getElementById('ptspBtnContinue');
+    const menuScreen = document.getElementById('ptspMenuScreen');
+    const formKonsultasi = document.getElementById('ptspFormKonsultasi');
+    const formPengaduan = document.getElementById('ptspFormPengaduan');
+    
     let isDomainValid = false;
 
-    // 3. Validasi Domain saat dimuat
+    // Helper Pindah Screen
+    function showScreen(screenEl) {
+        noticeScreen.style.display = 'none';
+        menuScreen.style.display = 'none';
+        formKonsultasi.style.display = 'none';
+        formPengaduan.style.display = 'none';
+
+        screenEl.style.display = 'block';
+    }
+
+    // Init Data & Domain Check
     fetch(`${serverUrl}/api/ptsp/init-data?satker_id=${satkerId}`)
         .then(async res => {
             const data = await res.json();
@@ -211,64 +295,69 @@
             isDomainValid = false;
             bubble.style.display = 'none';
             modal.style.display = 'none';
-            alert('⚠️ PTSP Widget Error: ' + err.message);
+            console.error('PTSP Widget Error:', err.message);
         });
 
-    // Toggle Modal Event Listener
+    // Toggle Floating Bubble
     bubble.addEventListener('click', () => {
         if (!isDomainValid) return;
 
         if (modal.style.display !== 'block') {
             modal.style.display = 'block';
             
-            // Cek jam kerja saat widget diklik
             if (!isJamKerjaWIB()) {
-                noticeScreen.style.display = 'block';
-                formScreen.style.display = 'none';
+                showScreen(noticeScreen);
             } else {
-                noticeScreen.style.display = 'none';
-                formScreen.style.display = 'block';
+                showScreen(menuScreen);
             }
         } else {
             modal.style.display = 'none';
         }
     });
 
-    // Event tombol "Tetap Lanjutkan" pada screen notice
-    btnContinue.addEventListener('click', () => {
-        noticeScreen.style.display = 'none';
-        formScreen.style.display = 'block';
+    // Event "Tetap Lanjutkan"
+    document.getElementById('ptspBtnContinue').addEventListener('click', () => {
+        showScreen(menuScreen);
     });
 
-    // Filter Input No HP (Hanya Angka)
-    const hpInput = document.getElementById('ptsp_no_hp');
-    hpInput.addEventListener('input', function () {
-        this.value = this.value.replace(/[^0-9]/g, '');
+    // Event Menu Selection
+    document.getElementById('ptspBtnSelectKonsultasi').addEventListener('click', () => {
+        showScreen(formKonsultasi);
     });
 
-    // Form Submit Handler
-    document.getElementById('ptspForm').addEventListener('submit', function (e) {
+    document.getElementById('ptspBtnSelectPengaduan').addEventListener('click', () => {
+        showScreen(formPengaduan);
+    });
+
+    // Event Back to Menu
+    document.querySelectorAll('.ptspBtnGoMenu').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showScreen(menuScreen);
+        });
+    });
+
+    // Sanitasi Input Hanya Angka
+    document.querySelectorAll('.ptsp-input-hp, #ptsp_p_nik').forEach(input => {
+        input.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+
+    // --- SUBMIT KONSULTASI ---
+    formKonsultasi.addEventListener('submit', function (e) {
         e.preventDefault();
         
-        if (!isDomainValid) {
-            alert('⚠️ Akses ditolak. Domain tidak valid.');
-            return;
-        }
+        if (!isDomainValid) return;
 
+        const hpInput = document.getElementById('ptsp_no_hp');
         const noHpVal = hpInput.value;
-        if (!noHpVal.startsWith('08')) {
-            alert('⚠️ Nomor HP / WhatsApp harus diawali dengan "08".');
+
+        if (!noHpVal.startsWith('08') || noHpVal.length < 10) {
             hpInput.focus();
             return;
         }
 
-        if (noHpVal.length < 10) {
-            alert('⚠️ Nomor HP / WhatsApp minimal 10 digit angka.');
-            hpInput.focus();
-            return;
-        }
-
-        const submitBtn = document.getElementById('ptspSubmitBtn');
+        const submitBtn = document.getElementById('ptspSubmitKonsultasiBtn');
         submitBtn.disabled = true;
         submitBtn.innerText = 'Menyimpan Data...';
 
@@ -290,9 +379,7 @@
         })
         .then(async res => {
             const data = await res.json();
-            if (!res.ok || data.status === 'error') {
-                throw new Error(data.message || 'Gagal menyimpan data.');
-            }
+            if (!res.ok || data.status === 'error') throw new Error(data.message || 'Gagal menyimpan data.');
             return data;
         })
         .then(res => {
@@ -303,12 +390,63 @@
                     window.open(res.redirect_url, '_blank');
                 }
                 modal.style.display = 'none';
-                document.getElementById('ptspForm').reset();
+                formKonsultasi.reset();
             }
         })
-        .catch(err => {
-            alert('⚠️ Gagal: ' + err.message);
+        .catch(err => console.error('Submit Konsultasi Error:', err))
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Lanjutkan ke Petugas';
+        });
+    });
+
+    // --- SUBMIT PENGADUAN ---
+    formPengaduan.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (!isDomainValid) return;
+
+        const hpInput = document.getElementById('ptsp_p_hp');
+        const noHpVal = hpInput.value;
+
+        if (!noHpVal.startsWith('08') || noHpVal.length < 10) {
+            hpInput.focus();
+            return;
+        }
+
+        const submitBtn = document.getElementById('ptspSubmitPengaduanBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Menyimpan Data...';
+
+        const payload = {
+            satker_id: satkerId,
+            nama_pelapor: document.getElementById('ptsp_p_nama').value,
+            no_hp: noHpVal,
+            nik: document.getElementById('ptsp_p_nik').value || null,
+            uaraian_pengaduan: document.getElementById('ptsp_p_uraian').value
+        };
+
+        fetch(`${serverUrl}/api/ptsp/store-pengaduan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(payload)
         })
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok || data.status === 'error') throw new Error(data.message || 'Gagal mengirim pengaduan.');
+            return data;
+        })
+        .then(res => {
+            if (res.status === 'success') {
+                // Direct Redirect ke WhatsApp tanpa alert
+                if (res.redirect_url) {
+                    window.open(res.redirect_url, '_blank');
+                }
+                modal.style.display = 'none';
+                formPengaduan.reset();
+            }
+        })
+        .catch(err => console.error('Submit Pengaduan Error:', err))
         .finally(() => {
             submitBtn.disabled = false;
             submitBtn.innerText = 'Lanjutkan ke Petugas';

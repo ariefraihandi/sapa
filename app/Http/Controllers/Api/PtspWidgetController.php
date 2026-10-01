@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PengunjungPtsp;
+use App\Models\Pengaduan;
 use App\Models\Satker;
 use App\Models\Pekerjaan;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,6 @@ class PtspWidgetController extends Controller
             ];
         }
 
-        // Jika kolom website belum diisi di database, tolak akses
         if (empty($satker->website)) {
             return [
                 'valid'   => false,
@@ -34,7 +34,6 @@ class PtspWidgetController extends Controller
             ];
         }
 
-        // Ambil header Referer atau Origin dari request browser
         $originHeader = $request->headers->get('referer') ?? $request->headers->get('origin');
 
         if (!$originHeader) {
@@ -44,16 +43,12 @@ class PtspWidgetController extends Controller
             ];
         }
 
-        // Helper untuk ekstrak host/domain bersih
         $getHost = function ($url) {
-            // Jika url tidak mengandung scheme, tambahkan temporary scheme agar parse_url bekerja
             if (!preg_match("~^(?:f|ht)tps?://~i", $url)) {
                 $url = "http://" . $url;
             }
             $host = parse_url($url, PHP_URL_HOST);
-            // Hapus www. dan port (jika ada)
-            $host = preg_replace('/^www\./i', '', strtolower($host ?? ''));
-            return $host;
+            return preg_replace('/^www\./i', '', strtolower($host ?? ''));
         };
 
         $allowedHost = $getHost($satker->website);
@@ -75,7 +70,6 @@ class PtspWidgetController extends Controller
     public function storePengunjung(Request $request)
     {
         try {
-            // 1. Validasi Domain/URL Website Satker
             $domainCheck = $this->validateDomain($request, $request->satker_id);
             if (!$domainCheck['valid']) {
                 return response()->json([
@@ -84,12 +78,11 @@ class PtspWidgetController extends Controller
                 ], 403);
             }
 
-            // 2. Validasi Input Form (Sertakan NIK sebagai nullable)
             $validated = $request->validate([
                 'satker_id'      => 'required',
                 'jenis_layanan'  => 'required|in:pesan,telepon',
                 'nama_responden' => 'required|string|max:255',
-                'nik'            => 'nullable|string|max:16', // <-- Ditambahkan nullable agar eksplisit
+                'nik'            => 'nullable|string|max:16',
                 'no_hp'          => 'required|string|max:20',
                 'email'          => 'nullable|email|max:255',
                 'jenis_kelamin'  => 'required|in:L,P',
@@ -97,33 +90,19 @@ class PtspWidgetController extends Controller
                 'pekerjaan'      => 'nullable|string|max:255',
                 'pendidikan'     => 'nullable|string|max:255',
                 'keperluan'      => 'required|string',
-            ], [
-                'nama_responden.required' => 'Nama lengkap wajib diisi.',
-                'no_hp.required'          => 'Nomor HP/WhatsApp wajib diisi.',
-                'jenis_kelamin.required'  => 'Jenis kelamin wajib dipilih.',
-                'jenis_kelamin.in'        => 'Pilihan jenis kelamin tidak valid.',
-                'keperluan.required'      => 'Keperluan wajib diisi.',
             ]);
 
-            // Pastikan nik bernilai null jika tidak dikirim dari JS
             $validated['nik'] = $request->nik ?? null;
-
-            // 3. Simpan Data Pengunjung ke Database
             $pengunjung = PengunjungPtsp::create($validated);
 
-            // 4. Ambil Data Satker & Layanan PTSP
             $satker = $domainCheck['satker'];
             $ptspDaerah = DB::table('ptsp_daerahs')->where('satker_id', $request->satker_id)->first();
-
             $namaSatker = $satker->satker_name ?? $satker->satker_short_name ?? 'MS Aceh';
             
-            if ($ptspDaerah && !empty($ptspDaerah->no_wa_layanan)) {
-                $noWaPetugas = $ptspDaerah->no_wa_layanan;
-            } else {
-                $noWaPetugas = $satker->whatsapp ?? $satker->telepon ?? '6281111111111';
-            }
+            $noWaPetugas = ($ptspDaerah && !empty($ptspDaerah->no_wa_layanan)) 
+                ? $ptspDaerah->no_wa_layanan 
+                : ($satker->whatsapp ?? $satker->telepon ?? '6281111111111');
 
-            // Sanitasi nomor HP agar format internasional
             $noWaPetugas = preg_replace('/[^0-9]/', '', $noWaPetugas);
             if (str_starts_with($noWaPetugas, '0')) {
                 $noWaPetugas = '62' . substr($noWaPetugas, 1);
@@ -131,7 +110,6 @@ class PtspWidgetController extends Controller
 
             $genderText = $pengunjung->jenis_kelamin === 'L' ? 'Laki-Laki' : 'Perempuan';
 
-            // 5. Format Pesan Otomatis WhatsApp
             $pesanWa  = "Halo PTSP *" . $namaSatker . "*,\n\n";
             $pesanWa .= "Saya membutuhkan informasi/layanan:\n";
             $pesanWa .= "• *Nama:* " . $pengunjung->nama_responden . "\n";
@@ -155,8 +133,86 @@ class PtspWidgetController extends Controller
                 'message' => collect($e->errors())->flatten()->first(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('PTSP Widget Error: ' . $e->getMessage());
+            Log::error('PTSP Widget Konsultasi Error: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan sistem server.',
+            ], 500);
+        }
+    }
 
+    public function storePengaduan(Request $request)
+    {
+        try {
+            $domainCheck = $this->validateDomain($request, $request->satker_id);
+            if (!$domainCheck['valid']) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $domainCheck['message'],
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'satker_id'         => 'required',
+                'nama_pelapor'      => 'required|string|max:255',
+                'no_hp'             => 'required|string|max:20',
+                'nik'               => 'nullable|string|max:16',
+                'uaraian_pengaduan' => 'required|string',
+            ], [
+                'nama_pelapor.required'      => 'Nama pelapor wajib diisi.',
+                'no_hp.required'             => 'Nomor HP/WhatsApp wajib diisi.',
+                'uaraian_pengaduan.required' => 'Uraian pengaduan wajib diisi.',
+            ]);
+
+            // Simpan ke database Model Pengaduan
+            $pengaduan = Pengaduan::create([
+                'satker_id'         => $validated['satker_id'],
+                'nama_pelapor'      => $validated['nama_pelapor'],
+                'no_hp'             => $validated['no_hp'],
+                'nik'               => $validated['nik'] ?? null,
+                'uaraian_pengaduan' => $validated['uaraian_pengaduan'],
+                'is_tindak_lanjut'  => false,
+            ]);
+
+            $satker = $domainCheck['satker'];
+            $ptspDaerah = DB::table('ptsp_daerahs')->where('satker_id', $request->satker_id)->first();
+            $namaSatker = $satker->satker_name ?? $satker->satker_short_name ?? 'MS Aceh';
+
+            $noWaPetugas = ($ptspDaerah && !empty($ptspDaerah->no_wa_pengaduan)) 
+                ? $ptspDaerah->no_wa_pengaduan 
+                : (($ptspDaerah && !empty($ptspDaerah->no_wa_layanan)) 
+                    ? $ptspDaerah->no_wa_layanan 
+                    : ($satker->whatsapp ?? $satker->telepon ?? '6281111111111'));
+
+            $noWaPetugas = preg_replace('/[^0-9]/', '', $noWaPetugas);
+            if (str_starts_with($noWaPetugas, '0')) {
+                $noWaPetugas = '62' . substr($noWaPetugas, 1);
+            }
+
+            // Format Pesan WhatsApp Pengaduan
+            $pesanWa  = "Assalamualaikum Admin *" . $namaSatker . "*,\n\n";
+            $pesanWa .= "Saya *" . $pengaduan->nama_pelapor . "* ingin menyampaikan *Pengaduan*:\n\n";
+            $pesanWa .= "• *NIK:* " . ($pengaduan->nik ?? '-') . "\n";
+            $pesanWa .= "• *No. HP:* " . $pengaduan->no_hp . "\n";
+            $pesanWa .= "• *Uraian:* " . $pengaduan->uaraian_pengaduan . "\n\n";
+            $pesanWa .= "_Laporan via Widget Pengaduan PTSP Online (ID: " . substr($pengaduan->id, 0, 8) . ")_";
+
+            $targetUrl = "https://api.whatsapp.com/send?phone=" . $noWaPetugas . "&text=" . urlencode($pesanWa);
+
+            return response()->json([
+                'status'       => 'success',
+                'message'      => 'Pengaduan berhasil dicatat',
+                'redirect_url' => $targetUrl,
+                'phone_number' => $noWaPetugas,
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => collect($e->errors())->flatten()->first(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('PTSP Widget Pengaduan Error: ' . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Terjadi kesalahan sistem server.',
@@ -168,7 +224,6 @@ class PtspWidgetController extends Controller
     {
         $satkerId = $request->query('satker_id');
 
-        // Validasi Domain saat inisialisasi
         $domainCheck = $this->validateDomain($request, $satkerId);
         if (!$domainCheck['valid']) {
             return response()->json([
