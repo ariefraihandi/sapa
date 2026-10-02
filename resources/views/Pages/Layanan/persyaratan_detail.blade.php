@@ -110,16 +110,34 @@
                                 </ol>
                             </div>
 
-                            <!-- FOOTER MODAL DETAIL PERKARA -->
-                            <div class="custom-modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                                <!-- TOMBOL DOWNLOAD PDF SPESIFIK JENIS PERKARA -->
-                                <a href="{{ route('public.persyaratan-perkara.download-pdf', ['satker_vshort' => $satker->satker_vshort, 'jenis_perkara_id' => $item->jenisPerkara->id]) }}" 
-                                target="_blank" 
-                                style="display: inline-flex; align-items: center; gap: 6px; background-color: #ef4444; color: #ffffff; padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
-                                    <i class="fa-solid fa-file-pdf"></i> Download Persyaratan
-                                </a>
+                            <!-- FOOTER MODAL DETAIL PERKARA -->                            
+                            <div class="custom-modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                
+                                {{-- Kelompok Tombol Aksi Kiri --}}
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    {{-- 1. TOMBOL DOWNLOAD PDF --}}
+                                    <a href="{{ route('public.persyaratan-perkara.download-pdf', ['satker_vshort' => $satker->satker_vshort, 'jenis_perkara_id' => $item->jenisPerkara->id]) }}" 
+                                    target="_blank" 
+                                    style="display: inline-flex; align-items: center; gap: 6px; background-color: #ef4444; color: #ffffff; padding: 0.5rem 0.85rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                                        <i class="fa-solid fa-file-pdf"></i> Download PDF
+                                    </a>
 
-                                <!-- TOMBOL TUTUP -->
+                                    {{-- 2. TOMBOL BUKAN HALAMAN KHUSUS (SINGLE PAGE) --}}
+                                    <a href="{{ route('public.persyaratan-perkara.single', ['satker_vshort' => $satker->satker_vshort, 'jenis_perkara_id' => $item->jenisPerkara->id]) }}" 
+                                    target="_blank"
+                                    style="display: inline-flex; align-items: center; gap: 6px; background-color: #0284c7; color: #ffffff; padding: 0.5rem 0.85rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Halaman
+                                    </a>
+
+                                    {{-- 3. TOMBOL SALIN LINK --}}
+                                    <button type="button" 
+                                            onclick="copyPerkaraUrl('{{ route('public.persyaratan-perkara.single', ['satker_vshort' => $satker->satker_vshort, 'jenis_perkara_id' => $item->jenisPerkara->id]) }}', this)"
+                                            style="display: inline-flex; align-items: center; gap: 6px; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 0.5rem 0.85rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+                                        <i class="fa-solid fa-link"></i> Salin Link
+                                    </button>
+                                </div>
+
+                                {{-- TOMBOL TUTUP MODAL --}}
                                 <button type="button" class="btn-auth btn-login" onclick="closeDetailModal({{ $index }})" style="border-radius: 10px; padding: 0.5rem 1.25rem;">
                                     Tutup
                                 </button>
@@ -230,6 +248,42 @@
                 document.getElementById('modalDetail' + index).style.display = 'none';
                 document.body.style.overflow = 'auto';
             }
+
+            function copyPerkaraUrl(url, buttonElement) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showCopyFeedback(buttonElement);
+                });
+            } else {
+                // Fallback untuk koneksi non-HTTPS / browser lama
+                let textArea = document.createElement("textarea");
+                textArea.value = url;
+                textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopyFeedback(buttonElement);
+                } catch (err) {
+                    alert('Gagal menyalin link');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function showCopyFeedback(buttonElement) {
+            let originalHTML = buttonElement.innerHTML;
+            buttonElement.innerHTML = '<i class="fa-solid fa-check text-success"></i> Tersalin!';
+            buttonElement.style.backgroundColor = '#dcfce7';
+            buttonElement.style.borderColor = '#86efac';
+            
+            setTimeout(() => {
+                buttonElement.innerHTML = originalHTML;
+                buttonElement.style.backgroundColor = '#f1f5f9';
+                buttonElement.style.borderColor = '#cbd5e1';
+            }, 2000);
+        }
         </script>
     </body>
 </html>

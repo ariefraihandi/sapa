@@ -125,6 +125,26 @@ class LayananController extends Controller
         return view('Pages.Layanan.persyaratan_detail', compact('satker', 'jenisPerkaraGrouped'));
     }
 
+    public function singlePersyaratanPerkara($satker_vshort, $jenis_perkara_id)
+    {
+        // 1. Ambil Data Satker
+        $satker = Satker::where('satker_vshort', $satker_vshort)
+            ->orWhere('id', $satker_vshort)
+            ->firstOrFail();
+
+        // 2. Ambil Data Jenis Perkara
+        $jenisPerkara = JenisPerkara::findOrFail($jenis_perkara_id);
+
+        // 3. Ambil Daftar Dokumen Syarat yang Approved & Active
+        $dokumenList = SyaratPerkara::where('satker_id', $satker->id)
+            ->where('jenis_perkara_id', $jenis_perkara_id)
+            ->where('is_approved', 1)
+            ->where('is_active', 1)
+            ->get();
+
+        return view('Pages.Layanan.persyaratan_single', compact('satker', 'jenisPerkara', 'dokumenList'));
+    }
+
     public function storePengunjung(Request $request)
     {
         $request->validate([

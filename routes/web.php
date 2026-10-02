@@ -21,6 +21,7 @@ Route::post('/buku-tamu', [LayananController::class, 'store'])->name('buku-tamu.
 Route::get('/layanan/persyaratan-perkara', [LayananController::class, 'persyaratanPerkara'])->name('public.persyaratan-perkara');
 Route::get('/layanan/persyaratan-perkara/{satker_vshort}', [LayananController::class, 'detailPersyaratanPerkara'])->name('public.persyaratan-perkara.detail');
 Route::get('/layanan/persyaratan-perkara/{satker_vshort}/{jenis_perkara_id}/download-pdf', [LayananController::class, 'downloadPersyaratanPdf'])->name('public.persyaratan-perkara.download-pdf');
+Route::get('/layanan/persyaratan-perkara/{satker_vshort}/{jenis_perkara_id}', [LayananController::class, 'singlePersyaratanPerkara'])->name('public.persyaratan-perkara.single');
 
 // Route AJAX Store Publik (LayananController)
 Route::post('/layanan/pengunjung/store', [LayananController::class, 'storePengunjung'])->name('public.pengunjung.store');
