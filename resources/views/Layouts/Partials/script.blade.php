@@ -69,5 +69,11 @@
     </script>
 
     {{-- <script src="http://sapa.test/js/ptsp-widget.js" data-satker-id="e1300195-5f74-4324-b20c-088c8db86213" data-server-url="http://sapa.test" async></script> --}}
+    {{-- <script 
+    type="module" 
+    src="http://sapa.test/js/ptsp-widget.js" 
+    data-satker-id="e1300195-5f74-4324-b20c-088c8db86213" 
+    data-server-url="http://sapa.test">
+</script> --}}
 
 @stack('scripts')

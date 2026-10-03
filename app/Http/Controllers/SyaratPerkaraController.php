@@ -460,20 +460,33 @@ class SyaratPerkaraController extends Controller
         if ($request->ajax()) {
             $type = $request->input('type'); // 'ms_aceh' atau 'daerah'
             
-            // 💡 UPDATE: Tambahkan orderBy created_at desc agar data terbaru selalu di paling atas
-            $query = PengunjungPtsp::with('satker')
+            // Eager load relasi satker, satkerTujuan, dan ptspDaerah milik satkerTujuan
+            $query = PengunjungPtsp::with(['satker', 'satkerTujuan.ptspDaerah'])
                 ->select('pengunjung_ptsp.*')
                 ->latest('created_at');
 
             if ($isMsAceh) {
                 if ($type === 'ms_aceh') {
-                    $query->where('satker_id', $userSatker->id);
+                    // Tabel MS Aceh: Muncul jika Satker Awal ATAU Satker Tujuan adalah MS Aceh
+                    $query->where(function ($q) use ($userSatker) {
+                        $q->where('satker_id', $userSatker->id)
+                        ->orWhere('satker_tujuan_id', $userSatker->id);
+                    });
                 } else {
-                    $query->where('satker_id', '!=', $userSatker->id);
+                    // Tabel MS Daerah (View MS Aceh): Muncul jika Satker Awal BUKAN MS Aceh ATAU Satker Tujuan BUKAN MS Aceh
+                    $query->where(function ($q) use ($userSatker) {
+                        $q->where('satker_id', '!=', $userSatker->id)
+                        ->orWhere('satker_tujuan_id', '!=', $userSatker->id);
+                    });
                 }
             } else {
+                // User Satker Daerah:
+                // Tetap MUNCUL jika Satker Awal = ID (Satker Lama) ATAU Satker Tujuan = ID (Satker Baru)
                 if ($userSatker) {
-                    $query->where('satker_id', $userSatker->id);
+                    $query->where(function ($q) use ($userSatker) {
+                        $q->where('satker_id', $userSatker->id)
+                        ->orWhere('satker_tujuan_id', $userSatker->id);
+                    });
                 }
             }
 
@@ -518,33 +531,87 @@ class SyaratPerkaraController extends Controller
                     });
                 })
                 ->addColumn('tujuan_layanan_html', function ($row) {
-                    $satkerName = $row->satker->satker_short_name ?? '-';
+                    $satkerAwal = $row->satker->satker_short_name ?? '-';
+                    $satkerTujuan = $row->satkerTujuan->satker_short_name ?? null;
+                    
+                    $layananRaw = strtolower($row->jenis_layanan ?? 'pesan');
                     $layanan = ucfirst($row->jenis_layanan ?? 'Pesan');
 
-                    return '
-                        <div class="mb-1"><span class="badge bg-light text-dark border"><i class="fa-solid fa-building me-1 text-success"></i>' . e($satkerName) . '</span></div>
-                        <div><span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-message me-1"></i>' . e($layanan) . '</span></div>
-                    ';
+                    // Penentuan Style Badge berdasarkan Jenis Layanan
+                    if (in_array($layananRaw, ['telepon', 'telpon', 'panggilan', 'call'])) {
+                        $badgeClass = 'bg-primary-subtle text-primary border-primary-subtle';
+                        $iconClass = 'fa-solid fa-phone me-1';
+                    } else {
+                        $badgeClass = 'bg-success-subtle text-success border-success-subtle';
+                        $iconClass = 'fa-solid fa-message me-1';
+                    }
+
+                    // Tampilan Alur Satker jika didisposisikan
+                    if ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id) {
+                        $satkerHtml = '
+                            <div class="mb-1 d-flex flex-column align-items-center gap-1">
+                                <span class="badge bg-light text-secondary border" title="Satker Asal"><i class="fa-solid fa-building me-1 text-muted"></i>' . e($satkerAwal) . '</span>
+                                <i class="fa-solid fa-arrow-down text-info" style="font-size: 10px;"></i>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle" title="Satker Disposisi Tujuan"><i class="fa-solid fa-share-nodes me-1"></i>' . e($satkerTujuan) . '</span>
+                            </div>
+                        ';
+                    } else {
+                        $satkerHtml = '<div class="mb-1"><span class="badge bg-light text-dark border"><i class="fa-solid fa-building me-1 text-success"></i>' . e($satkerAwal) . '</span></div>';
+                    }
+
+                    return $satkerHtml . '<div><span class="badge ' . $badgeClass . ' border"><i class="' . $iconClass . '"></i>' . e($layanan) . '</span></div>';
                 })
                 ->addColumn('kontak_wa_html', function ($row) {
                     if (!$row->no_hp) return '<span class="text-muted small">-</span>';
                     
+                    // Formatting Nomor HP
                     $phone = preg_replace('/[^0-9]/', '', $row->no_hp);
                     if (str_starts_with($phone, '0')) {
                         $phone = '62' . substr($phone, 1);
                     }
 
+                    // Panggilan berdasarkan Jenis Kelamin
+                    $panggilan = ($row->jenis_kelamin === 'L') ? 'Bapak' : 'Ibu';
+
+                    // Nama Satker Asal & Tujuan
+                    $satkerAwalName = $row->satker->satker_name ?? 'Mahkamah Syar\'iyah';
+                    $satkerTujuanName = $row->satkerTujuan->satker_name ?? null;
+                    $keperluanText = $row->keperluan ?: 'Layanan Informasi PTSP';
+
+                    // Cek apakah data ini hasil Disposisi (Ada Satker Tujuan)
+                    $isDisposisi = ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id);
+
+                    if ($isDisposisi) {
+                        // Draf Pesan Khusus untuk Pemohon yang Didisposisikan
+                        $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
+                        $pesanPemohon .= "Mohon maaf mengganggu waktunya " . $panggilan . " " . $row->nama_responden . " 🙏\n\n";
+                        $pesanPemohon .= "Kami menerima informasi dari *" . $satkerAwalName . "* bahwa " . $panggilan . " memiliki keperluan terkait:\n";
+                        $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
+                        $pesanPemohon .= "Karena keperluan tersebut berada dalam kewenangan *" . $satkerTujuanName . "*, permohonan " . $panggilan . " telah dialihkan kepada kami di PTSP *" . $satkerTujuanName . "*.\n\n";
+                        $pesanPemohon .= "Apakah ada informasi yang ingin ditanyakan lebih lanjut? Silakan balas pesan ini ya, kami siap membantu 😊";
+                    } else {
+                        // Draf Pesan Standar (Tanpa Disposisi)
+                        $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
+                        $pesanPemohon .= "Terima kasih " . $panggilan . " " . $row->nama_responden . " sudah menghubungi PTSP " . $satkerAwalName . " 🙏\n\n";
+                        $pesanPemohon .= "Mengenai keperluan " . $panggilan . " terkait:\n";
+                        $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
+                        $pesanPemohon .= "Ada yang bisa kami bantu atau informasikan lebih lanjut? Silakan balas pesan ini ya, terima kasih 😊";
+                    }
+
+                    $waUrl = "https://wa.me/" . $phone . "?text=" . urlencode($pesanPemohon);
+
+                    // Logika Warna & Status (Merah untuk Belum, Hijau untuk Sudah)
                     if ($row->is_tindak_lanjut) {
-                        $btnClass = 'btn-outline-success';
+                        $btnClass = 'btn-outline-success'; // Hijau jika sudah
                         $statusText = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
                     } else {
-                        $btnClass = 'btn-danger';
+                        $btnClass = 'btn-danger'; // Merah jika belum
                         $statusText = '<i class="fa-brands fa-whatsapp me-1"></i>Hubungi Pemohon';
                     }
 
                     return '
                         <div class="d-flex flex-column align-items-center gap-1">
-                            <a href="https://wa.me/' . $phone . '" target="_blank" 
+                            <a href="' . $waUrl . '" target="_blank" 
                             id="btn-wa-' . $row->id . '" 
                             onclick="markAsFollowedUp(\'' . $row->id . '\')" 
                             class="btn btn-sm ' . $btnClass . ' fw-bold px-2 py-1" style="font-size: 11px;">
@@ -555,6 +622,44 @@ class SyaratPerkaraController extends Controller
                     ';
                 })
                 ->addColumn('action', function ($row) {
+                    $btnHubungiPtspTujuan = '';
+                    
+                    // Opsi Hubungi PTSP Satker Tujuan di dropdown Aksi (Aksesibel oleh Satker Awal)
+                    if ($row->satkerTujuan && $row->satker_tujuan_id !== $row->satker_id) {
+                        $ptspDaerah = $row->satkerTujuan->ptspDaerah;
+                        $noWaPtsp = $ptspDaerah->no_wa_layanan ?? null;
+
+                        if ($noWaPtsp) {
+                            $phonePtsp = preg_replace('/[^0-9]/', '', $noWaPtsp);
+                            if (str_starts_with($phonePtsp, '0')) {
+                                $phonePtsp = '62' . substr($phonePtsp, 1);
+                            }
+
+                            $satkerAwalName = $row->satker->satker_name ?? 'Satker Asal';
+                            $satkerTujuanName = $row->satkerTujuan->satker_name ?? 'Satker Tujuan';
+                            $keperluanText = $row->keperluan ?: 'Tidak dicantumkan';
+
+                            $pesan = "Assalamu'alaikum wr. wb., Yth. Petugas PTSP " . $satkerTujuanName . ".\n\n";
+                            $pesan .= "Pemberitahuan Disposisi Pengunjung PTSP:\n";
+                            $pesan .= "• Nama Pemohon: " . $row->nama_responden . "\n";
+                            $pesan .= "• Kontak Pemohon: " . $row->no_hp . "\n";
+                            $pesan .= "• Satker Asal: " . $satkerAwalName . "\n";
+                            $pesan .= "• Keperluan: " . $keperluanText . "\n\n";
+                            $pesan .= "Pemohon telah didisposisikan ke " . $satkerTujuanName . ". Mohon bantuan untuk dapat dilayani lebih lanjut. Terima kasih.";
+
+                            $waUrl = "https://wa.me/" . $phonePtsp . "?text=" . urlencode($pesan);
+
+                            $btnHubungiPtspTujuan = '
+                                <li>
+                                    <a class="dropdown-item py-1 text-success fw-semibold" href="' . $waUrl . '" target="_blank">
+                                        <i class="fa-brands fa-whatsapp text-success me-2"></i>Hubungi PTSP ' . e($row->satkerTujuan->satker_short_name) . '
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                            ';
+                        }
+                    }
+
                     return '
                         <div class="dropdown">
                             <button class="btn btn-sm btn-light border dropdown-toggle fw-bold py-1 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size:12px;">
@@ -564,6 +669,12 @@ class SyaratPerkaraController extends Controller
                                 <li>
                                     <a class="dropdown-item py-1" href="#" data-bs-toggle="modal" data-bs-target="#modalDetailPengunjung' . $row->id . '">
                                         <i class="fa-solid fa-eye text-info me-2"></i>Detail
+                                    </a>
+                                </li>
+                                ' . $btnHubungiPtspTujuan . '
+                                <li>
+                                    <a class="dropdown-item py-1 text-primary" href="#" data-bs-toggle="modal" data-bs-target="#modalDisposisiPengunjung' . $row->id . '">
+                                        <i class="fa-solid fa-share-nodes me-2"></i>Disposisi Satker
                                     </a>
                                 </li>
                                 <li>
@@ -584,14 +695,12 @@ class SyaratPerkaraController extends Controller
                 ->rawColumns(['pemohon_html', 'tujuan_layanan_html', 'kontak_wa_html', 'action'])
                 ->make(true);
         }
-
-        // 💡 UPDATE: Menggunakan latest('created_at') untuk query non-AJAX
-        $pengunjung = PengunjungPtsp::with('satker')->latest('created_at')->get();
         
-        // Kirim status sound ke View (True jika is_pengunjung == 1)
-        $isSoundActive = $notifPtsp ? (bool)$notifPtsp->is_pengunjung : false;
+        $pengunjung     = PengunjungPtsp::with(['satker', 'satkerTujuan'])->latest('created_at')->get();
+        $satkers        = Satker::orderBy('satker_name', 'asc')->get();
+        $isSoundActive  = $notifPtsp ? (bool)$notifPtsp->is_pengunjung : false;
 
-        return view('Pages.PTSP.pengunjung_v2', compact('pengunjung', 'isMsAceh', 'isSoundActive'));
+        return view('Pages.PTSP.pengunjung_v2', compact('pengunjung', 'satkers', 'isMsAceh', 'isSoundActive'));
     }
 
     // 💡 FUNGSI UNTUK TOGGLE STATUS SOUND DI DATABASE
@@ -618,6 +727,34 @@ class SyaratPerkaraController extends Controller
         ]);
     }
 
+    /**
+     * Disposisi / Dialihkan ke Satker Baru
+     */
+    public function disposisiPengunjung(Request $request, $id)
+    {
+        // 1. Validasi input
+        $request->validate([
+            'satker_tujuan_id' => 'required|exists:satkers,id',
+        ], [
+            'satker_tujuan_id.required' => 'Pilih Satker tujuan terlebih dahulu.',
+            'satker_tujuan_id.exists'   => 'Satker tujuan tidak valid.',
+        ]);
+
+        // 2. Cari data pengunjung berdasarkan ID
+        $pengunjung = PengunjungPtsp::findOrFail($id);
+
+        // 3. Simpan ke kolom satker_tujuan_id (TIDAK mengubah satker_id asal)
+        $pengunjung->satker_tujuan_id = $request->satker_tujuan_id;
+
+        // 4. Reset status tindak lanjut ke false agar Satker tujuan harus menindaklanjuti ulang
+        $pengunjung->is_tindak_lanjut = false;
+
+        // 5. Simpan perubahan ke database
+        $pengunjung->save();
+
+        return redirect()->back()->with('success', 'Pengunjung berhasil didisposisikan ke Satker tujuan baru.');
+    }
+
     public function checkNewPengunjung(Request $request)
     {
         $user = Auth::user();
@@ -629,19 +766,24 @@ class SyaratPerkaraController extends Controller
         ));
 
         if ($isMsAceh) {
-            // Ambil data pengunjung paling baru khusus MS Aceh
-            $latestMsAcehRecord = PengunjungPtsp::where('satker_id', $userSatker->id)
-                ->latest('created_at')
+            // 1. Data Paling Baru khusus MS Aceh (Utamakan satker_tujuan_id jika ada)
+            $latestMsAcehRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) = ?', [$userSatker->id])
+                ->latest('updated_at')
                 ->first();
 
-            // Ambil data pengunjung paling baru dari seluruh Satker Daerah
-            $latestDaerahRecord = PengunjungPtsp::where('satker_id', '!=', $userSatker->id)
-                ->latest('created_at')
+            // 2. Data Paling Baru dari Seluruh Satker Daerah (Utamakan satker_tujuan_id jika ada)
+            $latestDaerahRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) != ?', [$userSatker->id])
+                ->latest('updated_at')
                 ->first();
 
-            // Gunakan kombinasi ID + Timestamp untuk deteksi yang akurat
-            $latestMsAcehKey = $latestMsAcehRecord ? $latestMsAcehRecord->id . '_' . $latestMsAcehRecord->created_at->timestamp : null;
-            $latestDaerahKey = $latestDaerahRecord ? $latestDaerahRecord->id . '_' . $latestDaerahRecord->created_at->timestamp : null;
+            // Kombinasi ID + Timestamp (updated_at / created_at) untuk deteksi akurat
+            $latestMsAcehKey = $latestMsAcehRecord 
+                ? $latestMsAcehRecord->id . '_' . ($latestMsAcehRecord->updated_at ?? $latestMsAcehRecord->created_at)->timestamp 
+                : null;
+
+            $latestDaerahKey = $latestDaerahRecord 
+                ? $latestDaerahRecord->id . '_' . ($latestDaerahRecord->updated_at ?? $latestDaerahRecord->created_at)->timestamp 
+                : null;
 
             return response()->json([
                 'status' => 'success',
@@ -650,14 +792,17 @@ class SyaratPerkaraController extends Controller
                 'latest_daerah_id' => $latestDaerahKey,
             ]);
         } else {
-            // Satker Daerah biasa
+            // 3. Satker Daerah Biasa
             $latestKey = null;
+
             if ($userSatker) {
-                $latestRecord = PengunjungPtsp::where('satker_id', $userSatker->id)
-                    ->latest('created_at')
+                $latestRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) = ?', [$userSatker->id])
+                    ->latest('updated_at')
                     ->first();
 
-                $latestKey = $latestRecord ? $latestRecord->id . '_' . $latestRecord->created_at->timestamp : null;
+                $latestKey = $latestRecord 
+                    ? $latestRecord->id . '_' . ($latestRecord->updated_at ?? $latestRecord->created_at)->timestamp 
+                    : null;
             }
 
             return response()->json([

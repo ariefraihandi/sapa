@@ -17,6 +17,7 @@ class PengunjungPtsp extends Model
 
     protected $fillable = [
         'satker_id',
+        'satker_tujuan_id', // Ditambahkan untuk penanganan salah alamat / disposisi
         'jenis_layanan',
         'nama_responden',
         'nik',
@@ -45,8 +46,19 @@ class PengunjungPtsp extends Model
         });
     }
 
+    /**
+     * Relasi ke Satker Awal / Penanggung Jawab Utama
+     */
     public function satker()
     {
         return $this->belongsTo(Satker::class, 'satker_id');
+    }
+
+    /**
+     * Relasi ke Satker Tujuan (Jika dialihkan / salah alamat)
+     */
+    public function satkerTujuan()
+    {
+        return $this->belongsTo(Satker::class, 'satker_tujuan_id');
     }
 }

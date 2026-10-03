@@ -1,23 +1,45 @@
 <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>SAPA MS ACEH - Sistem Layanan & Informasi PTSP Se-Aceh</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- === PRIMARY META SEO (CUSTOM / DEFAULT) === -->
+    <title>{{ $seo['title'] ?? 'SAPA MS ACEH - Sistem Layanan & Informasi PTSP Se-Aceh' }}</title>
+    <meta name="title" content="{{ $seo['title'] ?? 'SAPA MS ACEH - Sistem Layanan & Informasi PTSP Se-Aceh' }}">
+    <meta name="description" content="{{ $seo['description'] ?? 'Sistem Pusat Layanan Informasi dan Pelayanan Terpadu Satu Pintu (PTSP) Mahkamah Syar\'iyah se-Wilayah Hukum Aceh.' }}">
+    <meta name="keywords" content="{{ $seo['keywords'] ?? 'sapa ms aceh, ptsp aceh, mahkamah syariyah, layanan hukum aceh, pengadilan agama aceh' }}">
+    <meta name="author" content="{{ $seo['author'] ?? 'Mahkamah Syar\'iyah Aceh' }}">
+    <meta name="robots" content="index, follow">
 
-        <!-- FAVICON ICON (Inisial S + Tangan Menyapa dalam SVG/Data URI) -->
-        <link rel="icon" type="image/png" href="{{ asset('assets/images/logo/sapa.png') }}">
+    <!-- === OPEN GRAPH / FACEBOOK / WHATSAPP === -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $seo['title'] ?? 'SAPA MS ACEH - Sistem Layanan & Informasi PTSP Se-Aceh' }}">
+    <meta property="og:description" content="{{ $seo['description'] ?? 'Sistem Pusat Layanan Informasi dan Pelayanan Terpadu Satu Pintu (PTSP) Mahkamah Syar\'iyah se-Wilayah Hukum Aceh.' }}">
+    <meta property="og:image" content="{{ $seo['image'] ?? asset('assets/images/logo/sapa.png') }}">
 
-        <!-- Google Fonts: Inter & Plus Jakarta Sans -->
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- === TWITTER CARD === -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="{{ $seo['title'] ?? 'SAPA MS ACEH - Sistem Layanan & Informasi PTSP Se-Aceh' }}">
+    <meta property="twitter:description" content="{{ $seo['description'] ?? 'Sistem Pusat Layanan Informasi dan Pelayanan Terpadu Satu Pintu (PTSP) Mahkamah Syar\'iyah se-Wilayah Hukum Aceh.' }}">
+    <meta property="twitter:image" content="{{ $seo['image'] ?? asset('assets/images/logo/sapa.png') }}">
 
-        <!-- FontAwesome 6 -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- FAVICON ICON -->
+    <link rel="icon" type="image/png" href="{{ asset('assets/images/logo/sapa.png') }}">
 
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <!-- CDN jQuery & Select2 -->
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <style>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CDN Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
             /* === VARIABLES === */
             :root {
                 --primary: #047857;
@@ -444,5 +466,5 @@
                 .domain-badge { display: none; }
                 .hero-title { font-size: 1.75rem; }
             }
-        </style>
-    </head>
+    </style>
+</head>

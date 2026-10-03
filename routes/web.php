@@ -82,18 +82,21 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/syarat-perkara/{id}', [SyaratPerkaraController::class, 'destroy'])->name('ptsp.syarat-perkara.destroy');
         Route::put('/syarat-perkara/{id}/approve', [SyaratPerkaraController::class, 'approve'])->name('ptsp.syarat-perkara.approve');
         Route::post('/syarat-perkara/toggle-status', [SyaratPerkaraController::class, 'toggleStatus'])->name('ptsp.syarat-perkara.toggle-status');
+        
+        // Handling Pengunjung
         Route::put('/pengunjung/{id}', [SyaratPerkaraController::class, 'updatePengunjung'])->name('ptsp.pengunjung.update');
+        Route::put('/pengunjung/{id}/disposisi', [SyaratPerkaraController::class, 'disposisiPengunjung'])->name('ptsp.pengunjung.disposisi');
         Route::delete('/pengunjung/{id}', [SyaratPerkaraController::class, 'destroyPengunjung'])->name('ptsp.pengunjung.destroy');
+        Route::post('/pengunjung/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjut'])->name('ptsp.pengunjung.tindak-lanjut');
+        Route::post('/pengunjung/toggle-sound', [SyaratPerkaraController::class, 'toggleSoundPengunjung'])->name('ptsp.pengunjung.toggle-sound');
 
+        // Handling PTSP Daerah & Jenis Perkara
         Route::put('/profil-ptsp/{satker_id}', [SyaratPerkaraController::class, 'updatePtspDaerah'])->name('ptsp.profil-ptsp.update');
         Route::post('/syarat-perkara/jenis-perkara/store', [SyaratPerkaraController::class, 'storeJenisPerkara'])->name('ptsp.syarat-perkara.store-jenis');
         Route::delete('/syarat-perkara/jenis-perkara/{jenisPerkaraId}', [SyaratPerkaraController::class, 'destroyJenisPerkara'])->name('ptsp.syarat-perkara.destroy-jenis');
 
-        Route::post('/pengunjung/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjut'])->name('ptsp.pengunjung.tindak-lanjut');
+        // Handling Pengaduan
         Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
-
-        // Action Toggle Sound (Disimpan di SyaratPerkaraController)
-        Route::post('/pengunjung/toggle-sound', [SyaratPerkaraController::class, 'toggleSoundPengunjung'])->name('ptsp.pengunjung.toggle-sound');
     });
 
 

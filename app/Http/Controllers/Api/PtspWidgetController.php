@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\PengunjungPtsp;
-use App\Models\Pengaduan;
 use App\Models\Satker;
+use App\Models\Pengaduan;
+use App\Models\JenisPerkara;
+use App\Models\SyaratPerkara;
 use App\Models\Pekerjaan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +72,7 @@ class PtspWidgetController extends Controller
     public function storePengunjung(Request $request)
     {
         try {
+            // 1. Validasi Domain Pengirim Widget
             $domainCheck = $this->validateDomain($request, $request->satker_id);
             if (!$domainCheck['valid']) {
                 return response()->json([
@@ -78,6 +81,7 @@ class PtspWidgetController extends Controller
                 ], 403);
             }
 
+            // 2. Validasi Form Input Pengunjung
             $validated = $request->validate([
                 'satker_id'      => 'required',
                 'jenis_layanan'  => 'required|in:pesan,telepon',
@@ -93,14 +97,81 @@ class PtspWidgetController extends Controller
             ]);
 
             $validated['nik'] = $request->nik ?? null;
+            
+            // 3. Simpan Data Pengunjung ke Database
             $pengunjung = PengunjungPtsp::create($validated);
-
             $satker = $domainCheck['satker'];
+
+            // === 4. LOGIKA ANALISIS KECOCOKAN PERSYARATAN PERKARA ===
+            $keperluan = strtolower($validated['keperluan']);
+            $matchedPerkaraIds = [];
+
+            // Ambil semua data jenis perkara
+            $allJenisPerkara = JenisPerkara::all();
+
+            foreach ($allJenisPerkara as $jp) {
+                $namaLayanan = strtolower($jp->nama_layanan ?? '');
+                $deskripsi   = strtolower($jp->deskripsi ?? '');
+
+                // A. Cek apakah nama layanan utuh (misal "cerai gugat") ada di teks keperluan
+                $matchNamaUtuh = !empty($namaLayanan) && str_contains($keperluan, $namaLayanan);
+
+                // B. Pecah nama layanan menjadi kata-kata (> 3 karakter) untuk pencarian fleksibel
+                $wordsNama = array_filter(explode(' ', preg_replace('/[^a-zA-Z0-9\s]/', '', $namaLayanan)), function ($w) {
+                    return strlen($w) > 3;
+                });
+
+                $matchWordsCount = 0;
+                foreach ($wordsNama as $w) {
+                    if (str_contains($keperluan, $w)) {
+                        $matchWordsCount++;
+                    }
+                }
+
+                // Kriteria Cocok:
+                // 1. Nama layanan utuh ditemukan di teks keperluan, ATAU
+                // 2. Minimal 2 kata kunci dari nama layanan cocok (misal "gugatan" & "penguasaan"), ATAU
+                // 3. Deskripsi perkara cocok dengan teks keperluan
+                if ($matchNamaUtuh || $matchWordsCount >= 2 || (!empty($deskripsi) && str_contains($keperluan, $deskripsi))) {
+                    $matchedPerkaraIds[] = $jp->id;
+                }
+            }
+
+            $suggestions = [];
+
+            if (!empty($matchedPerkaraIds)) {
+                $satkerVshort = $satker->satker_vshort ?? strtolower($satker->satker_code ?? 'ms');
+
+                // Ambil detail jenis perkara yang cocok
+                $jenisPerkaraMatched = JenisPerkara::whereIn('id', array_unique($matchedPerkaraIds))->get();
+
+                foreach ($jenisPerkaraMatched as $jp) {
+                    // Pastikan ada dokumen syarat perkara yang AKTIF pada satker ini
+                    $syarat = SyaratPerkara::where('satker_id', $satker->id)
+                        ->where('jenis_perkara_id', $jp->id)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($syarat) {
+                        $suggestions[] = [
+                            'jenis_perkara_id' => $jp->id,
+                            'nama_layanan'     => $jp->nama_layanan,
+                            'kategori'         => $jp->kategori,
+                            'url'              => route('public.persyaratan-perkara.single', [
+                                'satker_vshort'    => $satkerVshort,
+                                'jenis_perkara_id' => $jp->id
+                            ])
+                        ];
+                    }
+                }
+            }
+
+            // === 5. BUILD LINK & FORMAT PESAN WHATSAPP ===
             $ptspDaerah = DB::table('ptsp_daerahs')->where('satker_id', $request->satker_id)->first();
             $namaSatker = $satker->satker_name ?? $satker->satker_short_name ?? 'MS Aceh';
-            
-            $noWaPetugas = ($ptspDaerah && !empty($ptspDaerah->no_wa_layanan)) 
-                ? $ptspDaerah->no_wa_layanan 
+
+            $noWaPetugas = ($ptspDaerah && !empty($ptspDaerah->no_wa_layanan))
+                ? $ptspDaerah->no_wa_layanan
                 : ($satker->whatsapp ?? $satker->telepon ?? '6281111111111');
 
             $noWaPetugas = preg_replace('/[^0-9]/', '', $noWaPetugas);
@@ -113,18 +184,21 @@ class PtspWidgetController extends Controller
             $pesanWa  = "Halo PTSP *" . $namaSatker . "*,\n\n";
             $pesanWa .= "Saya membutuhkan informasi/layanan:\n";
             $pesanWa .= "• *Nama:* " . $pengunjung->nama_responden . "\n";
-            $pesanWa .= "• *Jenis Kelamin:* " . $genderText . "\n";            
+            $pesanWa .= "• *Jenis Kelamin:* " . $genderText . "\n";
             $pesanWa .= "• *No. HP:* " . $pengunjung->no_hp . "\n";
             $pesanWa .= "• *Keperluan:* " . $pengunjung->keperluan . "\n\n";
             $pesanWa .= "_Registrasi via Widget PTSP Online (ID: " . substr($pengunjung->id, 0, 8) . ")_";
 
             $targetUrl = "https://api.whatsapp.com/send?phone=" . $noWaPetugas . "&text=" . urlencode($pesanWa);
 
+            // === 6. RETURN JSON RESPONSE ===
             return response()->json([
-                'status'       => 'success',
-                'message'      => 'Data pengunjung berhasil dicatat',
-                'redirect_url' => $targetUrl,
-                'phone_number' => $noWaPetugas,
+                'status'          => 'success',
+                'message'         => 'Data pengunjung berhasil dicatat',
+                'redirect_url'    => $targetUrl,
+                'phone_number'    => $noWaPetugas,
+                'has_suggestions' => count($suggestions) > 0,
+                'suggestions'     => $suggestions
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {

@@ -96,8 +96,8 @@
 </div>
 
 <!-- Dynamic Modals Component -->
-@foreach($pengunjung as$item)
-    <!-- 1. MODAL DETAIL -->
+@foreach($pengunjung as $item)
+    <!-- 1. MODAL DETAIL PENGUNJUNG -->
     <div class="modal fade" id="modalDetailPengunjung{{ $item->id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -112,7 +112,14 @@
                         <tr><td class="text-muted">Nomor HP/WA</td><td>:</td><td>{{ $item->no_hp }}</td></tr>
                         <tr><td class="text-muted">Jenis Kelamin</td><td>:</td><td>{{ $item->jenis_kelamin == 'L' ? 'Laki-laki' : 'Perempuan' }}</td></tr>
                         <tr><td class="text-muted">Pekerjaan</td><td>:</td><td>{{ $item->pekerjaan ?: '-' }}</td></tr>
-                        <tr><td class="text-muted">Satker Tujuan</td><td>:</td><td>{{ $item->satker->satker_name ?? '-' }}</td></tr>
+                        <tr><td class="text-muted">Satker Asal</td><td>:</td><td>{{ $item->satker->satker_name ?? '-' }}</td></tr>
+                        @if($item->satker_tujuan_id && $item->satker_tujuan_id !== $item->satker_id)
+                            <tr>
+                                <td class="text-muted">Satker Disposisi</td>
+                                <td>:</td>
+                                <td><span class="badge bg-info-subtle text-info border border-info-subtle">{{ $item->satkerTujuan->satker_name ?? '-' }}</span></td>
+                            </tr>
+                        @endif
                         <tr><td class="text-muted">Jenis Layanan</td><td>:</td><td><span class="badge bg-secondary">{{ ucfirst($item->jenis_layanan) }}</span></td></tr>
                         <tr><td class="text-muted">Waktu Kunjungan</td><td>:</td><td>{{ $item->created_at ? $item->created_at->format('d F Y - H:i') . ' WIB' : '-' }}</td></tr>
                     </table>
@@ -192,25 +199,77 @@
             </div>
         </div>
     </div>
+
+    <!-- 4. MODAL DISPOSISI / ALIHKAN SATKER -->
+    <div class="modal fade" id="modalDisposisiPengunjung{{ $item->id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content border-0 shadow" action="{{ route('ptsp.pengunjung.disposisi', $item->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header bg-info text-white py-2">
+                    <h6 class="modal-title fw-bold text-white"><i class="fa-solid fa-share-nodes me-2"></i>Disposisi / Dialihkan Ke Satker Lain</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-start">
+                    <div class="alert alert-warning py-2 px-3 small mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        Gunakan fitur ini jika pemohon <strong>salah alamat</strong> dan seharusnya menghubungi Satker lain.
+                    </div>
+
+                    <table class="table table-sm table-borderless mb-2 small">
+                        <tr>
+                            <td width="35%" class="text-muted">Nama Pemohon</td>
+                            <td width="5%">:</td>
+                            <td class="fw-bold">{{ $item->nama_responden }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Satker Asal/Saat Ini</td>
+                            <td>:</td>
+                            <td><span class="badge bg-secondary">{{ $item->satker->satker_short_name ?? '-' }}</span></td>
+                        </tr>
+                    </table>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Pilih Satker Tujuan Baru <span class="text-danger">*</span></label>
+                        <select name="satker_tujuan_id" class="form-select form-select-sm" required>
+                            <option value="" selected disabled>-- Pilih Satker Tujuan --</option>
+                            @foreach($satkers as $satker)
+                                @if($satker->id !== $item->satker_id)
+                                    <option value="{{ $satker->id }}">
+                                        {{ $satker->satker_name }} ({{ $satker->satker_short_name }})
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer py-1">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-sm btn-info text-white fw-bold"><i class="fa-solid fa-paper-plane me-1"></i> Kirim Disposisi</button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endforeach
 
 @endsection
 
 @push('styles')
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">    
+
     <style>
         .dataTables_length select { width: auto !important; display: inline-block !important; padding: 2px 8px !important; margin: 0 5px !important; font-size: 13px; }
         .dataTables_filter input { width: auto !important; display: inline-block !important; margin-left: 5px !important; padding: 2px 8px !important; font-size: 13px; }
         .dataTables_wrapper .dataTables_paginate .page-link { border-radius: 4px !important; padding: 4px 10px !important; font-size: 12px; }
         table.dataTable td { padding: 8px 10px !important; vertical-align: middle !important; font-size: 13px; }
         table.dataTable thead th { padding: 8px 10px !important; vertical-align: middle !important; font-size: 13px; font-weight: 600; }
+        
+        /* Perbaikan tampilan Select2 di dalam Modal Bootstrap */
+        .select2-container--bootstrap-5 { z-index: 1060 !important; }
     </style>
-    <!-- PATH BARU (BENAR) -->
-    @endpush
+@endpush
     
 @push('scripts')
-    <audio id="notifAudio" src="{{ asset('assets/sounds/notification.mp3') }}" preload="auto"></audio>
-
     <!-- CDN DataTables -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
@@ -276,18 +335,16 @@
                     url: "{{ route('ptsp.pengunjung.index') }}",
                     data: { type: 'daerah' }
                 },
-                columns: columnsConfig
+                    columns: columnsConfig
             });
         });
     </script>
-
+    
     <!-- 3. SCRIPT MANAGEMENT AUDIO NOTIFIKASI -->
     <script>
-        // Status dari DB
         window.soundEnabled = {{ $isSoundActive ? 'true' : 'false' }};
         window.audioUnlocked = false;
 
-        // Fungsi untuk unlock audio browser via interaksi user
         function unlockAudioContext() {
             const notifAudio = document.getElementById('notifAudio');
             if (!notifAudio || window.audioUnlocked) return;
@@ -302,7 +359,6 @@
             });
         }
 
-        // Pasang listener di seluruh body (klik pertama akan langsung unlock audio)
         document.addEventListener('click', unlockAudioContext, { once: true });
         document.addEventListener('keydown', unlockAudioContext, { once: true });
 
@@ -325,7 +381,6 @@
         }
 
         function toggleAudioPermission() {
-            // Interaksi klik tombol ini otomatis unlock audio
             unlockAudioContext();
 
             fetch("{{ route('ptsp.pengunjung.toggle-sound') }}", {
@@ -342,7 +397,7 @@
                     updateButtonUI(data.is_active);
 
                     if (data.is_active) {
-                        playNotifSound(); // Uji coba suara
+                        playNotifSound();
 
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({
@@ -373,14 +428,12 @@
             if (window.soundEnabled && notifAudio) {
                 notifAudio.currentTime = 0;
                 
-                // Mengatasi Play Promise Error dari Browser Autoplay Policy
                 const promise = notifAudio.play();
                 if (promise !== undefined) {
                     promise.then(() => {
                         console.log('🔔 Suara notifikasi berhasil diputar!');
                     }).catch(error => {
                         console.error('❌ Browser memblokir suara otomatis:', error);
-                        console.warn('👉 Klik di mana saja pada layar sekali agar browser mengizinkan suara.');
                     });
                 }
             }
@@ -406,11 +459,9 @@
                     let hasNewData = false;
 
                     if (data.is_ms_aceh) {
-                        // Cek Tabel MS Aceh
                         if (window.lastMsAcehId === null) {
                             window.lastMsAcehId = data.latest_ms_aceh_id;
                         } else if (data.latest_ms_aceh_id && window.lastMsAcehId !== data.latest_ms_aceh_id) {
-                            console.log('🔔 Data Baru Terdeteksi di MS Aceh:', data.latest_ms_aceh_id);
                             window.lastMsAcehId = data.latest_ms_aceh_id;
                             hasNewData = true;
 
@@ -419,11 +470,9 @@
                             }
                         }
 
-                        // Cek Tabel Daerah
                         if (window.lastDaerahId === null) {
                             window.lastDaerahId = data.latest_daerah_id;
                         } else if (data.latest_daerah_id && window.lastDaerahId !== data.latest_daerah_id) {
-                            console.log('🔔 Data Baru Terdeteksi di Satker Daerah:', data.latest_daerah_id);
                             window.lastDaerahId = data.latest_daerah_id;
                             hasNewData = true;
 
@@ -433,11 +482,9 @@
                         }
 
                     } else {
-                        // Satker Daerah
                         if (window.lastLatestId === null) {
                             window.lastLatestId = data.latest_id;
                         } else if (data.latest_id && window.lastLatestId !== data.latest_id) {
-                            console.log('🔔 Data Baru Terdeteksi:', data.latest_id);
                             window.lastLatestId = data.latest_id;
                             hasNewData = true;
 
@@ -447,7 +494,6 @@
                         }
                     }
 
-                    // Bunyikan suara
                     if (hasNewData) {
                         playNotifSound();
                     }
