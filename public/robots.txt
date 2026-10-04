@@ -1,2 +1,9 @@
 User-agent: *
-Disallow:
+Disallow: /system/
+Disallow: /ptsp/
+Disallow: /pengguna/
+Disallow: /dashboard
+Disallow: /auth
+Disallow: /login
+
+Sitemap: https://sapa.ms-aceh.go.id/sitemap.xml

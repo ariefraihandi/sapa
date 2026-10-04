@@ -8,12 +8,17 @@ use App\Http\Controllers\SystemController;
 use App\Http\Controllers\SyaratPerkaraController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Middleware\CheckMenuAccess;
+use App\Http\Controllers\SitemapController;
+
+// Public Route Sitemap XML
+
 
 /*
 |--------------------------------------------------------------------------
 | Public Routes (Akses Tanpa Login)
 |--------------------------------------------------------------------------
 */
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/pengunjung/check-new', [SyaratPerkaraController::class, 'checkNewPengunjung'])->name('ptsp.pengunjung.check-new');
 Route::get('/', [LayananController::class, 'bukuTelepon'])->name('buku-tamu-s');
 Route::get('/buku-tamu', [LayananController::class, 'bukuTelepon'])->name('buku-tamu');
@@ -126,7 +131,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/pengunjung', [SyaratPerkaraController::class, 'indexPengunjungv2'])->name('ptsp.pengunjung.index');
             Route::get('/pengaduan', [SyaratPerkaraController::class, 'indexPengaduan'])->name('ptsp.pengaduan.index');
             Route::get('/daftar-ptsp', [SyaratPerkaraController::class, 'daftarPtsp'])->name('ptsp.daftar-ptsp.index');
-            Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'index'])->name('ptsp.syarat-perkara.index');
+            Route::get('/syarat-perkara', [SyaratPerkaraController::class, 'indexSyarat'])->name('ptsp.syarat-perkara.index');
             Route::get('/syarat-perkara/edit', [SyaratPerkaraController::class, 'edit'])->name('ptsp.syarat-perkara.edit');
             Route::get('/profil-ptsp', [SyaratPerkaraController::class, 'ptspDaerah'])->name('ptsp.profil-ptsp.index');
         });

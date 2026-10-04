@@ -40,11 +40,11 @@ class LayananController extends Controller
         // Ambil hanya nama pekerjaannya saja
         $pekerjaans = Pekerjaan::orderBy('nama_pekerjaan', 'asc')->pluck('nama_pekerjaan');
 
-        // CUSTOM META SEO UNTUK BUKU TELEPON / KONTAK PTSP
+        // META SEO OPTIMIZED (Bahasa Ramah Masyarakat Awam)
         $seo = [
-            'title'       => 'Buku Telepon & Direktori Kontak PTSP Se-Aceh - SAPA MS ACEH',
-            'description' => 'Direktori lengkap nomor kontak WhatsApp, pusat bantuan PTSP, dan layanan telepon Mahkamah Syar\'iyah seluruh wilayah Hukum Aceh.',
-            'keywords'    => 'buku telepon ms aceh, kontak ptsp, whatsapp pengadilan agama, call center ms aceh, nomor telepon mahkamah syariyah',
+            'title'       => 'Pusat Bantuan & WhatsApp Resmi Mahkamah Syar\'iyah Se-Aceh - SAPA MS ACEH',
+            'description' => 'Hubungi langsung petugas PTSP Mahkamah Syar\'iyah seluruh Aceh via WhatsApp atau Telepon. Konsultasi gratis syarat gugatan, informasi perkara, konsultasi hukum, dan jadwal sidang.',
+            'keywords'    => 'nomor whatsapp mahkamah syariyah, wa ptsp pengadilan agama aceh, konsultasi perceraian aceh, call center ms aceh, kontak mahkamah syariyah, syarat gugat cerai aceh, bantuan hukum gratis aceh',
             'image'       => asset('assets/images/logo/sapa.png'),
             'author'      => 'Mahkamah Syar\'iyah Aceh',
         ];
@@ -65,11 +65,11 @@ class LayananController extends Controller
             ];
         });
 
-        // CUSTOM META SEO UNTUK HALAMAN INDEKS PERSYARATAN
+        // OPTIMIZED META SEO (Targeting Search Intent Masyarakat Awam)
         $seo = [
-            'title'       => 'Daftar Persyaratan Perkara PTSP Se-Aceh - SAPA MS ACEH',
-            'description' => 'Pilih satuan kerja Mahkamah Syar\'iyah se-Wilayah Hukum Aceh untuk melihat informasi lengkap syarat pengajuan perkara dan dokumen PTSP.',
-            'keywords'    => 'persyaratan perkara, syarat gugatan, syarat permohonan, ptsp ms aceh, mahkamah syar\'iyah, pengadilan agama aceh',
+            'title'       => 'Syarat Pengajuan Perkara & Syarat Cerai Mahkamah Syar\'iyah Se-Aceh - SAPA MS ACEH',
+            'description' => 'Panduan lengkap dan syarat dokumen pengajuan perkara (Cerai Talak, Cerai Gugat, Isbat Nikah, Waris, Hak Asuh Anak, & Poligami) di Mahkamah Syar\'iyah seluruh Aceh.',
+            'keywords'    => 'syarat gugat cerai aceh, syarat cerai talak, syarat isbat nikah, berkas perkara pengadilan agama, persyataan pengajuan perkara, ptsp mahkamah syariyah, konsultasi hukum aceh',
             'image'       => asset('assets/images/logo/sapa.png'),
             'author'      => 'Mahkamah Syar\'iyah Aceh',
         ];
@@ -116,40 +116,43 @@ class LayananController extends Controller
             ->orWhere('id', $satker_vshort)
             ->firstOrFail();
 
-        // 2. Ambil SELURUH Jenis Perkara
-        $jenisPerkaraList = JenisPerkara::orderBy('kategori', 'asc')
+        // Penentuan Nama Satker yang Konsisten
+        $namaSatker = $satker->satker_name ?? $satker->nama_satker;
+        $kotaSatker = $satker->satker_city ?? 'Aceh';
+
+        // 2. Optimization: Ambil Jenis Perkara beserta Syarat Approved milik Satker ini (Mencegah N+1 Query)
+        $jenisPerkaraGrouped = JenisPerkara::whereHas('syaratPerkara', function ($query) use ($satker) {
+                $query->where('satker_id', $satker->id)
+                    ->where('is_approved', 1)
+                    ->where('is_active', 1);
+            })
+            ->with(['syaratPerkara' => function ($query) use ($satker) {
+                $query->where('satker_id', $satker->id)
+                    ->where('is_approved', 1)
+                    ->where('is_active', 1);
+            }])
+            ->orderBy('kategori', 'asc')
             ->orderBy('nama_layanan', 'asc')
-            ->get();
+            ->get()
+            ->map(function ($jenis) {
+                return (object) [
+                    'jenisPerkara' => $jenis,
+                    'dokumenList'  => $jenis->syaratPerkara,
+                    'is_tayang'    => true
+                ];
+            });
 
-        // 3. Mapping Jenis Perkara & Ambil Syarat yang Approved milik Satker ini
-        $jenisPerkaraGrouped = $jenisPerkaraList->map(function ($jenis) use ($satker) {
-            $dokumenList = SyaratPerkara::where('satker_id', $satker->id)
-                ->where('jenis_perkara_id', $jenis->id)
-                ->where('is_approved', 1)
-                ->where('is_active', 1)
-                ->get();
-
-            return (object) [
-                'jenisPerkara' => $jenis,
-                'dokumenList'  => $dokumenList,
-                'is_tayang'    => $dokumenList->count() > 0
-            ];
-        })->filter(function ($item) {
-            return $item->is_tayang;
-        });
-
-        // 4. CUSTOM META SEO UNTUK HALAMAN INI
+        // 3. META SEO DYNAMIC & LOCAL TARGETING (Spesifik per Kabupaten/Kota)
         $seo = [
-            'title'       => "Persyaratan Perkara PTSP " . $satker->nama_satker . " - SAPA MS ACEH",
-            'description' => "Informasi lengkap mengenai dokumen dan syarat pengajuan perkara pada " . $satker->nama_satker . " melalui Layanan PTSP Online.",
-            'keywords'    => "persyaratan perkara, ptsp, " . strtolower($satker->nama_satker) . ", mahkamah syar'iyah, aceh, hukum",
-            'image'       => asset('assets/images/logo/sapa.png'), // Atau logo khusus satker jika ada
-            'author'      => "Mahkamah Syar'iyah Aceh",
+            'title'       => "Syarat Gugatan & Berkas Perkara {$namaSatker} - SAPA MS ACEH",
+            'description' => "Daftar syarat lengkap pengajuan perkara cerai, isbat nikah, waris, dan hak asuh anak di {$namaSatker} ({$kotaSatker}). Unduh dan cek berkas PTSP resmi.",
+            'keywords'    => "syarat cerai " . strtolower($namaSatker) . ", syarat gugatan " . strtolower($kotaSatker) . ", berkas perkara pengadilan, ptsp " . strtolower($namaSatker) . ", mahkamah syar'iyah " . strtolower($kotaSatker) . ", syarat isbat nikah",
+            'image'       => asset('assets/images/logo/sapa.png'),
+            'author'      => $namaSatker,
         ];
 
         return view('Pages.Layanan.persyaratan_detail', compact('satker', 'jenisPerkaraGrouped', 'seo'));
-    }
-
+    }   
     public function singlePersyaratanPerkara($satker_vshort, $jenis_perkara_id)
     {
         // 1. Ambil Data Satker
@@ -167,7 +170,21 @@ class LayananController extends Controller
             ->where('is_active', 1)
             ->get();
 
-        return view('Pages.Layanan.persyaratan_single', compact('satker', 'jenisPerkara', 'dokumenList'));
+        // Variable Helper untuk SEO Text
+        $namaLayanan = $jenisPerkara->nama_layanan;
+        $namaSatker  = $satker->satker_name ?? $satker->nama_satker;
+        $kotaSatker  = $satker->satker_city ?? 'Aceh';
+
+        // 4. DYNAMIC META SEO (Targeted Long-Tail Keywords)
+        $seo = [
+            'title'       => "Syarat {$namaLayanan} di {$namaSatker} - SAPA MS ACEH",
+            'description' => "Panduan resmi dokumen & syarat pengajuan {$namaLayanan} di {$namaSatker} ({$kotaSatker}). Cek kelengkapan berkas PTSP sebelum pendaftaran perkara.",
+            'keywords'    => "syarat " . strtolower($namaLayanan) . ", berkas " . strtolower($namaLayanan) . ", " . strtolower($namaSatker) . ", ptsp " . strtolower($kotaSatker) . ", pengajuan " . strtolower($namaLayanan) . " aceh",
+            'image'       => asset('assets/images/logo/sapa.png'),
+            'author'      => $namaSatker,
+        ];
+
+        return view('Pages.Layanan.persyaratan_single', compact('satker', 'jenisPerkara', 'dokumenList', 'seo'));
     }
 
     public function storePengunjung(Request $request)
@@ -207,7 +224,7 @@ class LayananController extends Controller
             'data'    => $pengunjung
         ]);
     }
-
+    
     public function storePengaduan(Request $request)
     {
         $request->validate([

@@ -15,8 +15,19 @@ class PenggunaController extends Controller
     // Menampilkan Halaman Profil Pengguna
     public function profile()
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
-        return view('Pages.Pengguna.profile', compact('user'));
+
+        // DYNAMIC META SEO UNTUK HALAMAN PROFIL PENGGUNA
+        $seo = [
+            'title'       => "Profil Saya - {$user->name} | SAPA MS ACEH",
+            'description' => "Pengaturan akun dan informasi profil pengguna {$user->name} di Sistem Layanan SAPA MS ACEH.",
+            'keywords'    => "profil pengguna, akun sapa ms, pengaturan akun",
+            'robots'      => 'noindex, nofollow', // Melindungi privasi data akun dari mesin pencari
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.Pengguna.profile', compact('user', 'seo'));
     }
 
     // Memperbarui Data Profil Pengguna
@@ -68,16 +79,27 @@ class PenggunaController extends Controller
     public function satkerProfile()
     {
         $user = Auth::user();
-        
-        // Pastikan user memiliki relasi ke Satker
+
+        // 1. Validasi relasi user ke Satker
         if (!$user->satker_id) {
             return redirect()->back()->with('error', 'Akun Anda tidak terhubung dengan Satuan Kerja manapun.');
         }
 
-    
+        // 2. Ambil data Satker
         $satker = Satker::findOrFail($user->satker_id);
 
-        return view('Pages.Pengguna.satker-profile', compact('satker'));
+        $namaSatker = $satker->satker_name ?? $satker->nama_satker;
+
+        // 3. DYNAMIC META SEO UNTUK HALAMAN PROFIL SATKER
+        $seo = [
+            'title'       => "Profil Satker - {$namaSatker} | SAPA MS ACEH",
+            'description' => "Pengaturan profil, informasi kontak, dan data operasional {$namaSatker} pada Sistem SAPA MS ACEH.",
+            'keywords'    => "profil satker, " . strtolower($namaSatker) . ", ptsp ms aceh, pengaturan satuan kerja",
+            'robots'      => 'noindex, nofollow', // Halaman pengelolaan internal, wajib noindex demi privasi & keamanan
+            'author'      => $namaSatker,
+        ];
+
+        return view('Pages.Pengguna.satker-profile', compact('satker', 'seo'));
     }
 
     // Memperbarui Data Satker milik User Login

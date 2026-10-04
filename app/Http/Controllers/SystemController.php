@@ -16,9 +16,6 @@ use Illuminate\Support\Facades\Hash;
 
 class SystemController extends Controller
 {
-    /**
-     * Halaman Manajemen Menu
-     */
     public function menu(Request $request)
     {
         $query = Menu::query();
@@ -32,15 +29,25 @@ class SystemController extends Controller
 
         $menus = $query->orderBy('order', 'asc')->get();
 
-        // Jika dipanggil via AJAX, render partial view menu_table
+        // Jika dipanggil via AJAX, render partial view menu_table tanpa memproses SEO
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('Layouts.Partials.menu_table', compact('menus'))->render()
             ]);
         }
 
-        $title = 'Menu';
-        return view('Pages.System.menu', compact('title', 'menus'));
+        $title = 'Pengaturan Menu System';
+
+        // DYNAMIC META SEO UNTUK HALAMAN MANAJEMEN MENU SYSTEM
+        $seo = [
+            'title'       => "Manajemen Menu Sistem | SAPA MS ACEH",
+            'description' => "Pengelolaan struktur, urutan, ikon, dan hak akses navigasi menu sistem SAPA MS ACEH.",
+            'keywords'    => "manajemen menu, struktur menu, navigasi sistem, admin sapa ms",
+            'robots'      => 'noindex, nofollow', // Halaman konfigurasi internal sistem, wajib noindex
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.System.menu', compact('title', 'menus', 'seo'));
     }
 
     public function submenu(Request $request)
@@ -64,17 +71,109 @@ class SystemController extends Controller
         // Grouping hasil data berdasarkan menu_id
         $submenusGrouped = $query->get()->groupBy('menu_id');
 
-        // Jika dipanggil via AJAX, render partial view
+        // Jika dipanggil via AJAX, render partial view tanpa memproses SEO
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('Layouts.Partials.submenu_table', ['submenusGrouped' => $submenusGrouped])->render()
             ]);
         }
 
-        $title = 'Submenu';
+        $title = 'Pengaturan Submenu System';
         $menus = Menu::where('is_dropdown', true)->orderBy('order', 'asc')->get();
 
-        return view('Pages.System.submenu', compact('title', 'submenusGrouped', 'menus'));
+        // DYNAMIC META SEO UNTUK HALAMAN MANAJEMEN SUBMENU SYSTEM
+        $seo = [
+            'title'       => "Manajemen Submenu Sistem | SAPA MS ACEH",
+            'description' => "Pengelolaan submenu, pemetaan induk menu, URL, dan hak akses rute navigasi sistem SAPA MS ACEH.",
+            'keywords'    => "manajemen submenu, struktur navigasi, routing sistem, admin sapa ms",
+            'robots'      => 'noindex, nofollow', // Halaman konfigurasi internal sistem, wajib noindex
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.System.submenu', compact('title', 'submenusGrouped', 'menus', 'seo'));
+    }
+
+    public function satker()
+    {
+        // Mengambil data Satker beserta total user/admin di dalamnya
+        $satkers = Satker::withCount('users')->get();
+
+        $title = 'Daftar Satuan Kerja - SAPA MS ACEH';
+
+        // DYNAMIC META SEO UNTUK HALAMAN MANAJEMEN SATUAN KERJA (ADMIN PANEL)
+        $seo = [
+            'title'       => 'Manajemen Data Satuan Kerja | SAPA MS ACEH',
+            'description' => 'Pengelolaan data master Satuan Kerja (Satker) Mahkamah Syar\'iyah se-Wilayah Hukum Aceh beserta jumlah pengguna terdaftar.',
+            'keywords'    => 'manajemen satker, daftar satuan kerja, master data satker, admin sapa ms',
+            'robots'      => 'noindex, nofollow', // Halaman pengelolaan internal, wajib noindex demi privasi & keamanan
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.Pengguna.satker', compact('title', 'satkers', 'seo'));
+    }
+
+    public function admin(Request $request)
+    {
+        $query = User::with(['satker', 'role']);
+
+        // Filter opsional berdasarkan Satker jika ada pencarian/pilihan
+        if ($request->has('satker_id') && $request->satker_id != '') {
+            $query->where('satker_id', $request->satker_id);
+        }
+
+        $users = $query->latest()->get();
+        $satkers = Satker::all();
+
+        $title = 'Daftar Pengguna Satker - SAPA MS ACEH';
+
+        // DYNAMIC META SEO UNTUK HALAMAN MANAJEMEN PENGGUNA ADMIN (ADMIN PANEL)
+        $seo = [
+            'title'       => 'Manajemen Pengguna & Admin Satker | SAPA MS ACEH',
+            'description' => 'Pengelolaan data akun pengguna, administrator, dan hak akses peran pada masing-masing Satuan Kerja Mahkamah Syar\'iyah se-Aceh.',
+            'keywords'    => 'manajemen pengguna, admin satker, hak akses user, pengelolaan akun sapa ms',
+            'robots'      => 'noindex, nofollow', // Halaman pengelolaan akun internal, wajib noindex demi keamanan
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.Pengguna.admin', [
+            'title'          => $title,
+            'users'          => $users,
+            'satkers'        => $satkers,
+            'selectedSatker' => $request->satker_id,
+            'seo'            => $seo,
+        ]);
+    }
+
+    public function access(Request $request)
+    {
+        // Mengambil semua role beserta relasi Satker
+        $roles = Role::with('satker')->orderBy('role_name', 'asc')->get();
+        
+        // Role yang dipilih (default role pertama jika tidak ada filter)
+        $selectedRoleId = $request->get('role_id', $roles->first()->id ?? null);
+        
+        // Ambil semua menu dan submenu
+        $menus = Menu::orderBy('order', 'asc')->get();
+        $submenus = Submenu::with('menu')->orderBy('order', 'asc')->get();
+
+        // Ambil ID akses yang sudah dimiliki role terpilih
+        $activeMenuIds = MenuAccess::where('role_id', $selectedRoleId)->pluck('menu_id')->toArray();
+        $activeSubmenuIds = SubmenuAccess::where('role_id', $selectedRoleId)->pluck('submenu_id')->toArray();
+
+        $title = 'Hak Akses Role';
+
+        // DYNAMIC META SEO UNTUK HALAMAN MANAJEMEN HAK AKSES ROLE (ADMIN PANEL)
+        $seo = [
+            'title'       => 'Manajemen Hak Akses Role | SAPA MS ACEH',
+            'description' => 'Pengaturan dan konfigurasi hak akses modul menu dan submenu berdasarkan peran pengguna pada sistem SAPA MS ACEH.',
+            'keywords'    => 'hak akses role, manajemen role, matrik akses, pendaftaran role sapa ms, admin panel',
+            'robots'      => 'noindex, nofollow', // Halaman konfigurasi keamanan & hak akses, wajib noindex
+            'author'      => 'Mahkamah Syar\'iyah Aceh',
+        ];
+
+        return view('Pages.System.access', compact(
+            'title', 'roles', 'selectedRoleId', 'menus', 'submenus', 'activeMenuIds', 'activeSubmenuIds', 'seo'
+        ));
     }
 
     // Simpan Menu Baru + Akses Khusus Administrator MS Aceh
@@ -240,17 +339,6 @@ class SystemController extends Controller
         ]);
     }
 
-    public function satker()
-    {
-        // Mengambil data Satker beserta total user/admin di dalamnya
-        $satkers = Satker::withCount('users')->get();
-
-        return view('Pages.Pengguna.satker', [
-            'title'   => 'Daftar Satuan Kerja - SAPA MS ACEH',
-            'satkers' => $satkers,
-        ]);
-    }
-
     public function storeSatker(Request $request)
     {
         $request->validate([
@@ -353,53 +441,6 @@ class SystemController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal menambahkan Satker: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Menampilkan daftar Pengguna/Admin dari setiap Satker
-     * URL: http://sapa.test/pengguna/admin
-     */
-    public function admin(Request $request)
-    {
-        $query = User::with(['satker', 'role']);
-
-        // Filter opsional berdasarkan Satker jika ada pencarian/pilihan
-        if ($request->has('satker_id') && $request->satker_id != '') {
-            $query->where('satker_id', $request->satker_id);
-        }
-
-        $users = $query->latest()->get();
-        $satkers = Satker::all();
-
-        return view('Pages.Pengguna.admin', [
-            'title'   => 'Daftar Pengguna Satker - SAPA MS ACEH',
-            'users'   => $users,
-            'satkers' => $satkers,
-            'selectedSatker' => $request->satker_id,
-        ]);
-    }
-
-    public function access(Request $request)
-    {
-        // Mengambil semua role beserta relasi Satker
-        $roles = Role::with('satker')->orderBy('role_name', 'asc')->get();
-        
-        // Role yang dipilih (default role pertama jika tidak ada filter)
-        $selectedRoleId = $request->get('role_id', $roles->first()->id ?? null);
-        
-        // Ambil semua menu dan submenu
-        $menus = Menu::orderBy('order', 'asc')->get();
-        $submenus = Submenu::with('menu')->orderBy('order', 'asc')->get();
-
-        // Ambil ID akses yang sudah dimiliki role terpilih
-        $activeMenuIds = MenuAccess::where('role_id', $selectedRoleId)->pluck('menu_id')->toArray();
-        $activeSubmenuIds = SubmenuAccess::where('role_id', $selectedRoleId)->pluck('submenu_id')->toArray();
-
-        $title = 'Hak Akses Role';
-
-        return view('Pages.System.access', compact(
-            'title', 'roles', 'selectedRoleId', 'menus', 'submenus', 'activeMenuIds', 'activeSubmenuIds'
-        ));
     }
 
     /**

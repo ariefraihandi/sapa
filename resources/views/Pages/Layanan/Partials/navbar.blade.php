@@ -3,7 +3,7 @@
     <a href="{{ url('/') }}" class="brand-logo">
         <img src="{{ asset('assets/images/logo/sapa.png') }}" alt="SAPA MS ACEH Logo" class="brand-img">
         <div class="brand-text">
-            <h1>SAPA-MS ACEH<span>Sistem Aplikasi Pelayanan & Informasi</span></h1>
+            <h1>SAPA-MS ACEH<span>Sistem Akses Pelayanan & Administrasi</span></h1>
         </div>
     </a>
 
