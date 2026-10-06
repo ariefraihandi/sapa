@@ -62,16 +62,18 @@
                     
                     <div class="d-flex align-items-center gap-3 flex-wrap">
                         <!-- Input Live Search Instant -->
-                     
-
+                    
                         <!-- Filter Khusus Superadmin MS Aceh -->
                         @if($isMsAceh)
                             <form method="GET" action="{{ route('ptsp.syarat-perkara.index') }}" class="d-flex align-items-center">
                                 <label class="me-2 fw-bold text-nowrap mb-0 small">Pilih Satker:</label>
                                 <select name="satker_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="">-- Semua Satker --</option>
+                                    {{-- Option untuk jika admin sewaktu-waktu ingin melihat seluruh daerah --}}
+                                    <option value="all" {{ $selectedSatkerId === 'all' ? 'selected' : '' }}>-- Semua Satker Se-Aceh --</option>
+
+                                    {{-- Loop daftar satker --}}
                                     @foreach($satkers ?? [] as $satker)
-                                        <option value="{{ $satker->id }}" {{ request('satker_id') == $satker->id ? 'selected' : '' }}>
+                                        <option value="{{ $satker->id }}" {{ (string)$selectedSatkerId === (string)$satker->id ? 'selected' : '' }}>
                                             {{ $satker->satker_name }}
                                         </option>
                                     @endforeach

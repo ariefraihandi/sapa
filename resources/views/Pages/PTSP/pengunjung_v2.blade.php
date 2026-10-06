@@ -19,6 +19,77 @@
         </div>
     </div>
 
+    <!-- 📊 CARD STATISTIK KINERJA LAYANAN PTSP -->
+    <div class="row g-3 mb-4">
+        <!-- 1. Total Pengunjung -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);">
+                <div class="card-body p-3 text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="text-white-50 small fw-semibold text-uppercase d-block" style="font-size: 11px;">Total Kunjungan</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-white">{{ number_format($stats['total']) }}</h3>
+                        </div>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.25);">
+                            <i class="fa-solid fa-users text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Sudah Ditindaklanjuti -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #10b981 0%, #047857 100%);">
+                <div class="card-body p-3 text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="text-white-50 small fw-semibold text-uppercase d-block" style="font-size: 11px;">Sudah Dilayani</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-white">{{ number_format($stats['selesai']) }}</h3>
+                        </div>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.25);">
+                            <i class="fa-solid fa-circle-check text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Belum Ditindaklanjuti (Pending) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+                <div class="card-body p-3 text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="text-white-50 small fw-semibold text-uppercase d-block" style="font-size: 11px;">Belum Dilayani</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-white">{{ number_format($stats['pending']) }}</h3>
+                        </div>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.25);">
+                            <i class="fa-solid fa-clock-rotate-left text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Rata-Rata Waktu Layanan (Jam Kerja) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                <div class="card-body p-3 text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="text-white-50 small fw-semibold text-uppercase d-block" style="font-size: 11px;">Rata-Rata Respon (Jam Kerja)</span>
+                            <h3 class="fw-bold mb-0 mt-1 text-white">{{ $stats['avg_durasi'] }}</h3>
+                        </div>
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background-color: rgba(255, 255, 255, 0.25);">
+                            <i class="fa-solid fa-stopwatch text-white fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if($isMsAceh)
         <!-- TABEL 1: KHUSUS MS ACEH -->
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
@@ -122,6 +193,7 @@
                         @endif
                         <tr><td class="text-muted">Jenis Layanan</td><td>:</td><td><span class="badge bg-secondary">{{ ucfirst($item->jenis_layanan) }}</span></td></tr>
                         <tr><td class="text-muted">Waktu Kunjungan</td><td>:</td><td>{{ $item->created_at ? $item->created_at->format('d F Y - H:i') . ' WIB' : '-' }}</td></tr>
+                        <tr><td class="text-muted">Durasi Respon</td><td>:</td><td><span class="badge bg-light text-dark border">{{ $item->format_durasi }}</span></td></tr>
                     </table>
                     <hr class="my-2">
                     <label class="fw-bold mb-1 small">Keperluan:</label>
@@ -263,14 +335,11 @@
         .dataTables_wrapper .dataTables_paginate .page-link { border-radius: 4px !important; padding: 4px 10px !important; font-size: 12px; }
         table.dataTable td { padding: 8px 10px !important; vertical-align: middle !important; font-size: 13px; }
         table.dataTable thead th { padding: 8px 10px !important; vertical-align: middle !important; font-size: 13px; font-weight: 600; }
-        
-        /* Perbaikan tampilan Select2 di dalam Modal Bootstrap */
         .select2-container--bootstrap-5 { z-index: 1060 !important; }
     </style>
 @endpush
     
 @push('scripts')
-    <!-- CDN DataTables -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
@@ -335,7 +404,7 @@
                     url: "{{ route('ptsp.pengunjung.index') }}",
                     data: { type: 'daerah' }
                 },
-                    columns: columnsConfig
+                columns: columnsConfig
             });
         });
     </script>
@@ -353,9 +422,9 @@
                 notifAudio.pause();
                 notifAudio.currentTime = 0;
                 window.audioUnlocked = true;
-                console.log('%c✅ DEBUG: Audio browser berhasil di-unlock via interaksi user!', 'color: #00ff00; font-weight: bold;');
+                console.log('✅ Audio unlocked');
             }).catch(e => {
-                console.warn('⚠️ Menunggu klik user untuk unlock audio:', e);
+                console.warn('⚠️ Menunggu interaksi user untuk audio:', e);
             });
         }
 
@@ -398,25 +467,6 @@
 
                     if (data.is_active) {
                         playNotifSound();
-
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Suara Berhasil Diaktifkan!',
-                                text: 'Uji coba suara sedang dimainkan.',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        }
-                    } else {
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Suara Dinonaktifkan',
-                                timer: 1500,
-                                showConfirmButton: false
-                            });
-                        }
                     }
                 }
             })
@@ -427,15 +477,7 @@
             const notifAudio = document.getElementById('notifAudio');
             if (window.soundEnabled && notifAudio) {
                 notifAudio.currentTime = 0;
-                
-                const promise = notifAudio.play();
-                if (promise !== undefined) {
-                    promise.then(() => {
-                        console.log('🔔 Suara notifikasi berhasil diputar!');
-                    }).catch(error => {
-                        console.error('❌ Browser memblokir suara otomatis:', error);
-                    });
-                }
+                notifAudio.play().catch(error => console.error('Audio play error:', error));
             }
         }
     </script>

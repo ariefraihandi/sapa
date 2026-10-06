@@ -17,7 +17,7 @@ class PengunjungPtsp extends Model
 
     protected $fillable = [
         'satker_id',
-        'satker_tujuan_id', // Ditambahkan untuk penanganan salah alamat / disposisi
+        'satker_tujuan_id',
         'jenis_layanan',
         'nama_responden',
         'nik',
@@ -29,10 +29,13 @@ class PengunjungPtsp extends Model
         'pendidikan',
         'keperluan',
         'is_tindak_lanjut',
+        'tindak_lanjut_at',      // Tambahan kolom waktu tindak lanjut
+        'durasi_tindak_lanjut',  // Tambahan kolom durasi (dalam detik)
     ];
 
     protected $casts = [
         'is_tindak_lanjut' => 'boolean',
+        'tindak_lanjut_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -44,6 +47,31 @@ class PengunjungPtsp extends Model
                 $model->{$model->getKeyName()} = (string) Str::uuid();
             }
         });
+    }
+
+    /**
+     * Accessor untuk memformat durasi_tindak_lanjut (detik) ke teks yang mudah dibaca.
+     * Contoh penggunaan di Blade: {{ $item->format_durasi }}
+     */
+    public function getFormatDurasiAttribute(): string
+    {
+        if (!$this->durasi_tindak_lanjut) {
+            return '-';
+        }
+
+        $detik = $this->durasi_tindak_lanjut;
+        $hari = floor($detik / 86400);
+        $jam = floor(($detik % 86400) / 3600);
+        $menit = floor(($detik % 3600) / 60);
+        $sisaDetik = $detik % 60;
+
+        $hasil = [];
+        if ($hari > 0) $hasil[] = "{$hari} Hari";
+        if ($jam > 0) $hasil[] = "{$jam} Jam";
+        if ($menit > 0) $hasil[] = "{$menit} Menit";
+        if ($sisaDetik > 0 || empty($hasil)) $hasil[] = "{$sisaDetik} Detik";
+
+        return implode(' ', $hasil);
     }
 
     /**
