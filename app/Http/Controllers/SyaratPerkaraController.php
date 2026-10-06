@@ -991,13 +991,12 @@ class SyaratPerkaraController extends Controller
     {
         $item = PengunjungPtsp::findOrFail($id);
 
-        $newStatus = !$item->is_tindak_lanjut;
-
-        if ($newStatus) {
+        // Cek apakah data ini SUDAH PERNAH ditindaklanjuti sebelumnya
+        if (!$item->is_tindak_lanjut) {
             $waktuSelesai = \Carbon\Carbon::now();
             $waktuBuat = $item->created_at;
 
-            // Hitung durasi jam kerja saja (skip Sabtu-Minggu & luar jam 08:00-16:30)
+            // Hitung durasi jam kerja pertama kali (skip Sabtu-Minggu & luar jam 08:00-16:30)
             $durasiDetik = $this->calculateWorkingSeconds($waktuBuat, $waktuSelesai);
 
             $item->update([
@@ -1006,10 +1005,10 @@ class SyaratPerkaraController extends Controller
                 'durasi_tindak_lanjut' => $durasiDetik,
             ]);
         } else {
+            // Jika status sudah true (nilai 1) dan diklik lagi (misal re-click / pesan ulang WA):
+            // Tetap pastikan is_tindak_lanjut = true TANPA meng-update/mengubah tindak_lanjut_at & durasi_tindak_lanjut
             $item->update([
-                'is_tindak_lanjut'     => false,
-                'tindak_lanjut_at'     => null,
-                'durasi_tindak_lanjut' => null,
+                'is_tindak_lanjut' => true,
             ]);
         }
 
