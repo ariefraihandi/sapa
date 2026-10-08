@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Http;
 
 class BotDashboardController extends Controller
 {
-    // Updated port based on api_frontend_guide.md
-    private $baseUrl = 'http://localhost:8001';
+    // Updated port based on user request
+    private $baseUrl = 'http://localhost:8080';
 
     public function __construct()
     {
@@ -43,7 +43,7 @@ class BotDashboardController extends Controller
             $sapaan = collect($data)->firstWhere('keyword', '[SAPAAN_AWAL]');
         } catch (\Exception $e) {
             $sapaan = null;
-            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8001). Pastikan Bot sedang berjalan.');
+            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8080). Pastikan Bot sedang berjalan.');
         }
 
         return view('Pages.BotDashboard.sapaan', compact('title', 'sapaan'));
@@ -81,7 +81,7 @@ class BotDashboardController extends Controller
             $faqs = collect($data)->values();
         } catch (\Exception $e) {
             $faqs = collect([]);
-            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8001).');
+            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8080).');
         }
 
         return view('Pages.BotDashboard.faqs', compact('title', 'faqs'));
@@ -152,7 +152,7 @@ class BotDashboardController extends Controller
             $users = $response->json()['data'] ?? [];
         } catch (\Exception $e) {
             $users = [];
-            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8001).');
+            session()->flash('error', 'Gagal terhubung ke API Bot (Node.js di port 8080).');
         }
 
         return view('Pages.BotDashboard.users', compact('title', 'users'));
