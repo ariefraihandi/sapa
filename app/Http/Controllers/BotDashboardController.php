@@ -96,7 +96,7 @@ class BotDashboardController extends Controller
 
         try {
             $response = $this->apiClient()->post("{$this->baseUrl}/api/faqs", [
-                'keyword' => strtolower($request->keyword),
+                'keyword' => $request->keyword,
                 'answer' => $request->answer,
                 'is_active' => $request->has('is_active') ? 1 : 0
             ]);
@@ -118,7 +118,7 @@ class BotDashboardController extends Controller
 
         try {
             $response = $this->apiClient()->put("{$this->baseUrl}/api/faqs/{$id}", [
-                'keyword' => strtolower($request->keyword),
+                'keyword' => $request->keyword,
                 'answer' => $request->answer,
                 'is_active' => $request->has('is_active') ? 1 : 0
             ]);
