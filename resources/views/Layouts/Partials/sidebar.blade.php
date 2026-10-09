@@ -45,18 +45,6 @@
                 @endif
             @endforeach
 
-            @if(strtolower(Auth::user()->role->role_name ?? '') === 'admin' || strtolower(Auth::user()->role->role_name ?? '') === 'super admin' || strtolower(Auth::user()->role->role_name ?? '') === 'superadmin')
-                <li>
-                    <a class="has-arrow" href="javascript:void(0);" aria-expanded="false">
-                        <i class="flaticon-381-networking"></i>
-                        <span class="nav-text">RENCONG GATE</span>
-                    </a>
-                    <ul aria-expanded="false">
-                        <li><a href="{{ route('bot.faqs') }}">Manajemen Sapaan & FAQ</a></li>
-                        <li><a href="{{ route('bot.users') }}">Riwayat Pengguna Bot</a></li>
-                    </ul>
-                </li>
-            @endif
         </ul>
 
         {{-- <ul class="metismenu" id="menu">

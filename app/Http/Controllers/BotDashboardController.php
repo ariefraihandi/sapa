@@ -10,28 +10,13 @@ class BotDashboardController extends Controller
     // Updated port based on user request
     private $baseUrl = 'http://localhost:8080';
 
-    public function __construct()
-    {
-        $this->middleware(function ($request, $next) {
-            $user = $request->user();
-            if (!$user) {
-                return redirect()->route('login');
-            }
-
-            $roleName = strtolower($user->role->role_name ?? '');
-            if ($roleName !== 'admin' && $roleName !== 'super admin' && $roleName !== 'superadmin') {
-                return redirect()->route('dashboard')->with('error', 'Akses ditolak. Menu ini hanya boleh diakses oleh Admin.');
-            }
-            return $next($request);
-        });
-    }
-
     private function apiClient()
     {
-        return Http::timeout(5)->withBasicAuth(
-            env('RENCONG_GATE_USER'), 
-            env('RENCONG_GATE_PASSWORD')
-        );
+        // Menjamin argumen berupa string agar tidak memicu TypeError saat env bernilai null
+        $user = (string) env('RENCONG_GATE_USER', '');
+        $pass = (string) env('RENCONG_GATE_PASSWORD', '');
+
+        return Http::timeout(5)->withBasicAuth($user, $pass);
     }
 
     public function sapaan()

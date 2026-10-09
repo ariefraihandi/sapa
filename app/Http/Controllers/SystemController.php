@@ -146,6 +146,7 @@ class SystemController extends Controller
 
     public function access(Request $request)
     {
+        
         // Mengambil semua role beserta relasi Satker
         $roles = Role::with('satker')->orderBy('role_name', 'asc')->get();
         

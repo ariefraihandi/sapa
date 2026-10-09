@@ -7,11 +7,9 @@ use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\SyaratPerkaraController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Middleware\CheckMenuAccess;
+use App\Http\Controllers\BotDashboardController;
 use App\Http\Controllers\SitemapController;
-
-// Public Route Sitemap XML
-
+use App\Http\Middleware\CheckMenuAccess;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,6 +102,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
     });
 
+    // Action Bot Dashboard (Proses Form / Store / Update / Delete)
+    Route::prefix('bot')->group(function () {
+        Route::put('/sapaan/{id}', [BotDashboardController::class, 'sapaanUpdate'])->name('bot.sapaan.update');
+        Route::post('/faqs', [BotDashboardController::class, 'faqsStore'])->name('bot.faqs.store');
+        Route::put('/faqs/{id}', [BotDashboardController::class, 'faqsUpdate'])->name('bot.faqs.update');
+        Route::delete('/faqs/{id}', [BotDashboardController::class, 'faqsDestroy'])->name('bot.faqs.destroy');
+    });
+
 
     // =========================================================================
     // 2. ROUTE HALAMAN WEB / VIEWS (Diproteksi Middleware CheckMenuAccess)
@@ -136,23 +142,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/profil-ptsp', [SyaratPerkaraController::class, 'ptspDaerah'])->name('ptsp.profil-ptsp.index');
         });
 
+        // Bot Dashboard Views
+        Route::prefix('bot')->group(function () {
+            Route::get('/sapaan', [BotDashboardController::class, 'sapaan'])->name('bot.sapaan');
+            Route::get('/faqs', [BotDashboardController::class, 'faqs'])->name('bot.faqs');
+            Route::get('/users', [BotDashboardController::class, 'users'])->name('bot.users');
+        });
+
     });
 
-});
-
-/*
-|--------------------------------------------------------------------------
-| Bot Dashboard Routes (Added from Guide)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('bot')->group(function () {
-    Route::get('/sapaan', [\App\Http\Controllers\BotDashboardController::class, 'sapaan'])->name('bot.sapaan');
-    Route::put('/sapaan/{id}', [\App\Http\Controllers\BotDashboardController::class, 'sapaanUpdate'])->name('bot.sapaan.update');
-    
-    Route::get('/faqs', [\App\Http\Controllers\BotDashboardController::class, 'faqs'])->name('bot.faqs');
-    Route::post('/faqs', [\App\Http\Controllers\BotDashboardController::class, 'faqsStore'])->name('bot.faqs.store');
-    Route::put('/faqs/{id}', [\App\Http\Controllers\BotDashboardController::class, 'faqsUpdate'])->name('bot.faqs.update');
-    Route::delete('/faqs/{id}', [\App\Http\Controllers\BotDashboardController::class, 'faqsDestroy'])->name('bot.faqs.destroy');
-    
-    Route::get('/users', [\App\Http\Controllers\BotDashboardController::class, 'users'])->name('bot.users');
 });
