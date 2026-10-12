@@ -15,9 +15,6 @@ use Illuminate\Support\Facades\Log;
 
 class PtspWidgetController extends Controller
 {
-    /**
-     * Helper privat untuk memvalidasi domain pengirim request
-     */
     private function validateDomain(Request $request, $satkerId)
     {
         $satker = Satker::find($satkerId);

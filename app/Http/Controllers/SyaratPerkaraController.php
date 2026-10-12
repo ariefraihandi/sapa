@@ -14,6 +14,7 @@ use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\WorkCalendarService;
 use Carbon\Carbon;
 
 class SyaratPerkaraController extends Controller
@@ -299,42 +300,8 @@ class SyaratPerkaraController extends Controller
                 ->make(true);
         }
 
-        // 💡 HITUNG METRIK STATISTIK & KINERJA PTSP UNTUK TAMPILAN PAGE
-        $statsQuery = PengunjungPtsp::query();
-        if ($userSatker) {
-            $statsQuery->where(function ($q) use ($userSatker) {
-                $q->where('satker_id', $userSatker->id)
-                  ->orWhere('satker_tujuan_id', $userSatker->id);
-            });
-        }
-
-        $totalPengunjung  = (clone $statsQuery)->count();
-        $totalSelesai     = (clone $statsQuery)->where('is_tindak_lanjut', true)->count();
-        $totalPending     = (clone $statsQuery)->where('is_tindak_lanjut', false)->count();
-        $avgDurasiDetik   = (clone $statsQuery)->where('is_tindak_lanjut', true)->avg('durasi_tindak_lanjut');
-
-        // Format Durasi Rata-Rata Layanan
-        $formattedAvgDurasi = '-';
-        if ($avgDurasiDetik) {
-            $detik = round($avgDurasiDetik);
-            $jam = floor($detik / 3600);
-            $menit = floor(($detik % 3600) / 60);
-            $sisaDetik = $detik % 60;
-
-            $durasiParts = [];
-            if ($jam > 0) $durasiParts[] = "{$jam}j";
-            if ($menit > 0) $durasiParts[] = "{$menit}m";
-            if ($sisaDetik > 0 || empty($durasiParts)) $durasiParts[] = "{$sisaDetik}d";
-
-            $formattedAvgDurasi = implode(' ', $durasiParts);
-        }
-
-        $stats = [
-            'total'       => $totalPengunjung,
-            'selesai'     => $totalSelesai,
-            'pending'     => $totalPending,
-            'avg_durasi'  => $formattedAvgDurasi,
-        ];
+        // 💡 KALKULASI STATISTIK DENGAN FILTER SATKER DISPOSISI VS SATKER ASAL
+        $stats = $this->calculatePtspStats($userSatker);
 
         $pengunjung     = PengunjungPtsp::with(['satker', 'satkerTujuan'])->latest('created_at')->get();
         $satkers        = Satker::orderBy('satker_name', 'asc')->get();
@@ -351,6 +318,67 @@ class SyaratPerkaraController extends Controller
         ];
 
         return view('Pages.PTSP.pengunjung_v2', compact('pengunjung', 'satkers', 'isMsAceh', 'isSoundActive', 'stats', 'seo', 'title'));
+    }
+
+    /**
+     * 2. PRIVATE METHOD KALKULASI METRIK & AVG (DIPAKAI CONTROLLER UTAMA)
+     */
+    private function calculatePtspStats($userSatker)
+    {
+        $statsQuery = PengunjungPtsp::query();
+
+        if ($userSatker) {
+            $statsQuery->where(function ($q) use ($userSatker) {
+                // 1. Jika data DIDISPOSISI, dihitung oleh Satker Tujuan
+                $q->where(function ($sub) use ($userSatker) {
+                    $sub->whereNotNull('satker_tujuan_id')
+                        ->whereColumn('satker_tujuan_id', '!=', 'satker_id')
+                        ->where('satker_tujuan_id', $userSatker->id);
+                })
+                // 2. Jika TANPA DISPOSISI, dihitung oleh Satker Awal
+                ->orWhere(function ($sub) use ($userSatker) {
+                    $sub->where(function ($nullCheck) {
+                        $nullCheck->whereNull('satker_tujuan_id')
+                                  ->orWhereColumn('satker_tujuan_id', 'satker_id');
+                    })
+                    ->where('satker_id', $userSatker->id);
+                });
+            });
+        }
+
+        $totalPengunjung  = (clone $statsQuery)->count();
+        $totalSelesai     = (clone $statsQuery)->where('is_tindak_lanjut', true)->count();
+        $totalPending     = (clone $statsQuery)->where('is_tindak_lanjut', false)->count();
+        $avgDurasiDetik   = (clone $statsQuery)->where('is_tindak_lanjut', true)->avg('durasi_tindak_lanjut');
+
+        // Format Durasi Rata-Rata Layanan
+        $formattedAvgDurasi = WorkCalendarService::formatSeconds(round($avgDurasiDetik ?? 0));
+
+        return [
+            'total'      => $totalPengunjung,
+            'selesai'    => $totalSelesai,
+            'pending'    => $totalPending,
+            'avg_durasi' => $formattedAvgDurasi,
+        ];
+    }
+
+    /**
+     * 3. METHOD KHUSUS PEMANGGILAN STATISTIK VIA AJAX (MENGGUNAKAN FUNGSI KALKULASI YANG SAMA)
+     */
+    public function getStatistikPtsp()
+    {
+        $user = Auth::user();
+        $userSatker = $user ? $user->satker : null;
+
+        $stats = $this->calculatePtspStats($userSatker);
+
+        return response()->json([
+            'success'    => true,
+            'total'      => number_format($stats['total']),
+            'selesai'    => number_format($stats['selesai']),
+            'pending'    => number_format($stats['pending']),
+            'avg_durasi' => $stats['avg_durasi'],
+        ]);
     }
 
     public function indexPengaduan()
@@ -709,9 +737,6 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Rincian dokumen berhasil diperbarui.');
     }
 
-    /**
-     * Hapus 1 Baris Syarat Dokumen (Hanya Administrator / Superadmin)
-     */
     public function destroy($id)
     {
         if (!$this->isAdministrator()) {
@@ -729,9 +754,6 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Satu dokumen persyaratan berhasil dihapus.');
     }
 
-    /**
-     * Hapus Seluruh Jenis Perkara Beserta Semua Syarat Dokumen di Bawahnya (Khusus Administrator)
-     */
     public function destroyJenisPerkara($jenisPerkaraId)
     {
         if (!$this->isAdministrator()) {
@@ -750,9 +772,6 @@ class SyaratPerkaraController extends Controller
             ->with('success', 'Jenis perkara beserta seluruh syarat dokumen terkait berhasil dihapus.');
     }
 
-    /**
-     * Update Status Keaktifan via AJAX Toggle
-     */
     public function toggleStatus(Request $request)
     {
         $request->validate([
@@ -779,9 +798,6 @@ class SyaratPerkaraController extends Controller
         ]);
     }
 
-    /**
-     * Simpan / Update Data PTSP
-     */
     public function updatePtspDaerah(Request $request, $satker_id)
     {
         $request->validate([
@@ -986,18 +1002,42 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Data pengunjung berhasil dihapus.');
     }
 
-    // 2. Action Update Status Tindak Lanjut via WA Click
     public function toggleTindakLanjut($id)
     {
+        $user = Auth::user();
+
+        // 1. Validasi pengguna yang sedang login
+        if (!$user || !$user->satker_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Akun Anda tidak terhubung dengan Satker manapun.'
+            ], 403);
+        }
+
         $item = PengunjungPtsp::findOrFail($id);
 
-        // Cek apakah data ini SUDAH PERNAH ditindaklanjuti sebelumnya
-        if (!$item->is_tindak_lanjut) {
-            $waktuSelesai = \Carbon\Carbon::now();
-            $waktuBuat = $item->created_at;
+        // 2. Tentukan Satker yang berwenang
+        $isDisposisi = (!empty($item->satker_tujuan_id) && $item->satker_tujuan_id !== $item->satker_id);
+        $satkerBerwenangId = $isDisposisi ? $item->satker_tujuan_id : $item->satker_id;
 
-            // Hitung durasi jam kerja pertama kali (skip Sabtu-Minggu & luar jam 08:00-16:30)
-            $durasiDetik = $this->calculateWorkingSeconds($waktuBuat, $waktuSelesai);
+        // 3. Cek apakah satker_id user yang login sesuai dengan Satker yang berwenang
+        if ($user->satker_id !== $satkerBerwenangId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Hanya petugas Satker yang berwenang yang dapat menindaklanjuti permohonan ini.'
+            ], 403);
+        }
+
+        // 4. Proses update status jika validasi lolos
+        if (!$item->is_tindak_lanjut) {
+            $waktuSelesai = Carbon::now();
+            
+            // 💡 LOGIKA WAKTU MULAI: 
+            // Jika didisposisi, gunakan updated_at (waktu disposisi). Jika tidak, gunakan created_at.
+            $waktuMulai = $isDisposisi ? $item->updated_at : $item->created_at;
+
+            // Hitung durasi jam kerja murni dari waktu mulai yang disesuaikan
+            $durasiDetik = WorkCalendarService::calculateWorkingSeconds($waktuMulai, $waktuSelesai);
 
             $item->update([
                 'is_tindak_lanjut'     => true,
@@ -1005,8 +1045,7 @@ class SyaratPerkaraController extends Controller
                 'durasi_tindak_lanjut' => $durasiDetik,
             ]);
         } else {
-            // Jika status sudah true (nilai 1) dan diklik lagi (misal re-click / pesan ulang WA):
-            // Tetap pastikan is_tindak_lanjut = true TANPA meng-update/mengubah tindak_lanjut_at & durasi_tindak_lanjut
+            // Jika sudah ditindaklanjuti, tetap simpan status tanpa mengubah waktu & durasi awal
             $item->update([
                 'is_tindak_lanjut' => true,
             ]);

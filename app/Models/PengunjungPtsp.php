@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\WorkCalendarService;
 use Illuminate\Support\Str;
 
 class PengunjungPtsp extends Model
@@ -49,29 +50,13 @@ class PengunjungPtsp extends Model
         });
     }
 
-    /**
-     * Accessor untuk memformat durasi_tindak_lanjut (detik) ke teks yang mudah dibaca.
-     * Contoh penggunaan di Blade: {{ $item->format_durasi }}
-     */
     public function getFormatDurasiAttribute(): string
     {
         if (!$this->durasi_tindak_lanjut) {
             return '-';
         }
 
-        $detik = $this->durasi_tindak_lanjut;
-        $hari = floor($detik / 86400);
-        $jam = floor(($detik % 86400) / 3600);
-        $menit = floor(($detik % 3600) / 60);
-        $sisaDetik = $detik % 60;
-
-        $hasil = [];
-        if ($hari > 0) $hasil[] = "{$hari} Hari";
-        if ($jam > 0) $hasil[] = "{$jam} Jam";
-        if ($menit > 0) $hasil[] = "{$menit} Menit";
-        if ($sisaDetik > 0 || empty($hasil)) $hasil[] = "{$sisaDetik} Detik";
-
-        return implode(' ', $hasil);
+        return WorkCalendarService::formatSeconds($this->durasi_tindak_lanjut);
     }
 
     /**
