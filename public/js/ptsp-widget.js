@@ -149,6 +149,9 @@
             padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.5;
             margin-bottom: 14px; text-align: center;
         }
+        .sapa-ptsp-error-text {
+            color: #dc2626; font-size: 11px; margin-top: 4px; display: none;
+        }
     `;
     shadowRoot.appendChild(style);
 
@@ -244,15 +247,15 @@
 
                 <div class="sapa-ptsp-row">
                     <div class="sapa-ptsp-col sapa-ptsp-form-group">
-                        <label>Pekerjaan</label>
-                        <select class="sapa-ptsp-select" id="ptsp_pekerjaan">
+                        <label>Pekerjaan *</label>
+                        <select class="sapa-ptsp-select" id="ptsp_pekerjaan" required>
                             <option value="">-- Pilih --</option>
                             ${pekerjaanOptions}
                         </select>
                     </div>
                     <div class="sapa-ptsp-col sapa-ptsp-form-group">
-                        <label>Pendidikan</label>
-                        <select class="sapa-ptsp-select" id="ptsp_pendidikan">
+                        <label>Pendidikan *</label>
+                        <select class="sapa-ptsp-select" id="ptsp_pendidikan" required>
                             <option value="">-- Pilih --</option>
                             <option value="SD">SD</option>
                             <option value="SMP">SMP</option>
@@ -270,6 +273,8 @@
                     <textarea class="sapa-ptsp-textarea" id="ptsp_keperluan" rows="2" placeholder="Tuliskan keperluan/pertanyaan Anda..." required></textarea>
                 </div>
 
+                <div id="ptsp_konsultasi_error" class="sapa-ptsp-error-text"></div>
+
                 <button type="submit" class="sapa-ptsp-btn-submit" id="sapaPtspSubmitKonsultasiBtn">Ajukan Pertanyaan</button>
             </form>
         `;
@@ -282,11 +287,30 @@
         });
 
         const form = screenContainer.querySelector('#sapaPtspFormKonsultasiInner');
+        const errorBox = screenContainer.querySelector('#ptsp_konsultasi_error');
+
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            errorBox.style.display = 'none';
 
-            const noHpVal = hpInput.value;
+            // Semakan Validasi Input Kosong (Trim Space)
+            const jenisLayanan = screenContainer.querySelector('#ptsp_jenis_layanan').value.trim();
+            const jenisKelamin = screenContainer.querySelector('#ptsp_jenis_kelamin').value.trim();
+            const namaResponden = screenContainer.querySelector('#ptsp_nama_responden').value.trim();
+            const noHpVal = hpInput.value.trim();
+            const pekerjaan = screenContainer.querySelector('#ptsp_pekerjaan').value.trim();
+            const pendidikan = screenContainer.querySelector('#ptsp_pendidikan').value.trim();
+            const keperluan = screenContainer.querySelector('#ptsp_keperluan').value.trim();
+
+            if (!jenisLayanan || !jenisKelamin || !namaResponden || !noHpVal || !pekerjaan || !pendidikan || !keperluan) {
+                errorBox.innerText = '⚠️ Silakan lengkapi semua kolom yang wajib diisi!';
+                errorBox.style.display = 'block';
+                return;
+            }
+
             if (!noHpVal.startsWith('08') || noHpVal.length < 10) {
+                errorBox.innerText = '⚠️ Nomor HP/WhatsApp tidak valid (minimal 10 digit dan diawali 08).';
+                errorBox.style.display = 'block';
                 hpInput.focus();
                 return;
             }
@@ -297,13 +321,13 @@
 
             const payload = {
                 satker_id: satkerId,
-                jenis_layanan: screenContainer.querySelector('#ptsp_jenis_layanan').value,
-                jenis_kelamin: screenContainer.querySelector('#ptsp_jenis_kelamin').value,
-                nama_responden: screenContainer.querySelector('#ptsp_nama_responden').value,
+                jenis_layanan: jenisLayanan,
+                jenis_kelamin: jenisKelamin,
+                nama_responden: namaResponden,
                 no_hp: noHpVal,
-                pekerjaan: screenContainer.querySelector('#ptsp_pekerjaan').value || null,
-                pendidikan: screenContainer.querySelector('#ptsp_pendidikan').value || null,
-                keperluan: screenContainer.querySelector('#ptsp_keperluan').value
+                pekerjaan: pekerjaan,
+                pendidikan: pendidikan,
+                keperluan: keperluan
             };
 
             storeKonsultasi(payload)
@@ -316,6 +340,8 @@
                 })
                 .catch(err => {
                     console.error('Submit Konsultasi Error:', err);
+                    errorBox.innerText = '⚠️ Gagal mengirim data. Silakan coba lagi.';
+                    errorBox.style.display = 'block';
                     submitBtn.disabled = false;
                     submitBtn.innerText = 'Ajukan Pertanyaan';
                 });
@@ -405,6 +431,8 @@
                     <textarea class="sapa-ptsp-textarea" id="ptsp_p_uraian" rows="3" placeholder="Tuliskan detail pengaduan Anda secara ringkas dan jelas..." required></textarea>
                 </div>
 
+                <div id="ptsp_pengaduan_error" class="sapa-ptsp-error-text"></div>
+
                 <button type="submit" class="sapa-ptsp-btn-submit sapa-ptsp-btn-danger" id="sapaPtspSubmitPengaduanBtn">Lanjutkan ke Petugas</button>
             </form>
         `;
@@ -418,13 +446,27 @@
         });
 
         const form = screenContainer.querySelector('#sapaPtspFormPengaduanInner');
+        const errorBox = screenContainer.querySelector('#ptsp_pengaduan_error');
+
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            errorBox.style.display = 'none';
 
+            const namaPelapor = screenContainer.querySelector('#ptsp_p_nama').value.trim();
             const hpInput = screenContainer.querySelector('#ptsp_p_hp');
-            const noHpVal = hpInput.value;
+            const noHpVal = hpInput.value.trim();
+            const nikVal = screenContainer.querySelector('#ptsp_p_nik').value.trim();
+            const uraianPengaduan = screenContainer.querySelector('#ptsp_p_uraian').value.trim();
+
+            if (!namaPelapor || !noHpVal || !uraianPengaduan) {
+                errorBox.innerText = '⚠️ Silakan lengkapi semua kolom yang wajib diisi!';
+                errorBox.style.display = 'block';
+                return;
+            }
 
             if (!noHpVal.startsWith('08') || noHpVal.length < 10) {
+                errorBox.innerText = '⚠️ Nomor HP/WhatsApp tidak valid (minimal 10 digit dan diawali 08).';
+                errorBox.style.display = 'block';
                 hpInput.focus();
                 return;
             }
@@ -435,10 +477,10 @@
 
             const payload = {
                 satker_id: satkerId,
-                nama_pelapor: screenContainer.querySelector('#ptsp_p_nama').value,
+                nama_pelapor: namaPelapor,
                 no_hp: noHpVal,
-                nik: screenContainer.querySelector('#ptsp_p_nik').value || null,
-                uaraian_pengaduan: screenContainer.querySelector('#ptsp_p_uraian').value
+                nik: nikVal || null,
+                uaraian_pengaduan: uraianPengaduan
             };
 
             storePengaduan(payload)
@@ -448,7 +490,11 @@
                         modal.style.display = 'none';
                     }
                 })
-                .catch(err => console.error('Submit Pengaduan Error:', err))
+                .catch(err => {
+                    console.error('Submit Pengaduan Error:', err);
+                    errorBox.innerText = '⚠️ Gagal mengirim pengaduan. Silakan coba lagi.';
+                    errorBox.style.display = 'block';
+                })
                 .finally(() => {
                     submitBtn.disabled = false;
                     submitBtn.innerText = 'Lanjutkan ke Petugas';

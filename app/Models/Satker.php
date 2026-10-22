@@ -54,4 +54,10 @@ class Satker extends Model
     {
         return $this->hasOne(PtspDaerah::class, 'satker_id', 'id');
     }
+
+    // Tambahkan relasi ini ke dalam class Satker
+    public function kabkots()
+    {
+        return $this->hasMany(Kabkot::class, 'satker_id', 'id');
+    }
 }

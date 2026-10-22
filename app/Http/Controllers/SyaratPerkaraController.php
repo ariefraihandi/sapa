@@ -10,6 +10,8 @@ use App\Models\NotifikasiPtsp;
 use App\Models\PengunjungPtsp;
 use Illuminate\Http\Request;
 use App\Models\Pengaduan;
+use App\Models\Pekerjaan;
+use App\Models\Kabkot;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -19,9 +21,6 @@ use Carbon\Carbon;
 
 class SyaratPerkaraController extends Controller
 {
-    /**
-     * Helper Method: Mengecek & menyinkronkan status is_approved otomatis
-     */
     private function syncGroupApprovalStatus($satkerId, $jenisPerkaraId)
     {
         $docs = SyaratPerkara::where('satker_id', $satkerId)
@@ -83,24 +82,21 @@ class SyaratPerkaraController extends Controller
 
             if ($isMsAceh) {
                 if ($type === 'ms_aceh') {
-                    // Tabel MS Aceh: Muncul jika Satker Awal ATAU Satker Tujuan adalah MS Aceh
                     $query->where(function ($q) use ($userSatker) {
                         $q->where('satker_id', $userSatker->id)
-                          ->orWhere('satker_tujuan_id', $userSatker->id);
+                        ->orWhere('satker_tujuan_id', $userSatker->id);
                     });
                 } else {
-                    // Tabel MS Daerah (View MS Aceh): Muncul jika Satker Awal BUKAN MS Aceh ATAU Satker Tujuan BUKAN MS Aceh
                     $query->where(function ($q) use ($userSatker) {
                         $q->where('satker_id', '!=', $userSatker->id)
-                          ->orWhere('satker_tujuan_id', '!=', $userSatker->id);
+                        ->orWhere('satker_tujuan_id', '!=', $userSatker->id);
                     });
                 }
             } else {
-                // User Satker Daerah: Tetap MUNCUL jika Satker Awal = ID ATAU Satker Tujuan = ID
                 if ($userSatker) {
                     $query->where(function ($q) use ($userSatker) {
                         $q->where('satker_id', $userSatker->id)
-                          ->orWhere('satker_tujuan_id', $userSatker->id);
+                        ->orWhere('satker_tujuan_id', $userSatker->id);
                     });
                 }
             }
@@ -109,6 +105,9 @@ class SyaratPerkaraController extends Controller
             if (!empty($tanggalFilter)) {
                 $query->whereDate('created_at', $tanggalFilter);
             }
+
+            // Pre-fetch semua JenisPerkara untuk lookup cepat
+            $allJenisPerkara = JenisPerkara::all()->keyBy('id');
 
             return DataTables::of($query)
                 ->addIndexColumn()
@@ -141,8 +140,8 @@ class SyaratPerkaraController extends Controller
                 ->filterColumn('pemohon_html', function($query, $keyword) {
                     $query->where(function($q) use ($keyword) {
                         $q->where('pengunjung_ptsp.nama_responden', 'LIKE', "%{$keyword}%")
-                          ->orWhere('pengunjung_ptsp.id', 'LIKE', "%{$keyword}%")
-                          ->orWhere('pengunjung_ptsp.pekerjaan', 'LIKE', "%{$keyword}%");
+                        ->orWhere('pengunjung_ptsp.id', 'LIKE', "%{$keyword}%")
+                        ->orWhere('pengunjung_ptsp.pekerjaan', 'LIKE', "%{$keyword}%");
                     });
                 })
                 ->addColumn('tujuan_layanan_html', function ($row) {
@@ -150,14 +149,19 @@ class SyaratPerkaraController extends Controller
                     $satkerTujuan = $row->satkerTujuan->satker_short_name ?? null;
                     
                     $layananRaw = strtolower($row->jenis_layanan ?? 'pesan');
-                    $layanan = ucfirst($row->jenis_layanan ?? 'Pesan');
-
-                    if (in_array($layananRaw, ['telepon', 'telpon', 'panggilan', 'call'])) {
+                    
+                    if ($layananRaw === 'tatap_muka') {
+                        $badgeClass = 'bg-info-subtle text-info border-info-subtle';
+                        $iconClass = 'fa-solid fa-users me-1';
+                        $layanan = 'Tatap Muka';
+                    } elseif (in_array($layananRaw, ['telepon', 'telpon', 'panggilan', 'call'])) {
                         $badgeClass = 'bg-primary-subtle text-primary border-primary-subtle';
                         $iconClass = 'fa-solid fa-phone me-1';
+                        $layanan = 'Telepon';
                     } else {
                         $badgeClass = 'bg-success-subtle text-success border-success-subtle';
                         $iconClass = 'fa-solid fa-message me-1';
+                        $layanan = 'Pesan';
                     }
 
                     if ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id) {
@@ -172,9 +176,19 @@ class SyaratPerkaraController extends Controller
                         $satkerHtml = '<div class="mb-1"><span class="badge bg-light text-dark border"><i class="fa-solid fa-building me-1 text-success"></i>' . e($satkerAwal) . '</span></div>';
                     }
 
+                    // Hanya kembalikan Satker & Badge Layanan tanpa keperluan
                     return $satkerHtml . '<div><span class="badge ' . $badgeClass . ' border"><i class="' . $iconClass . '"></i>' . e($layanan) . '</span></div>';
                 })
-                ->addColumn('kontak_wa_html', function ($row) {
+                ->addColumn('keperluan', function ($row) use ($allJenisPerkara) {
+                    if (Str::isUuid($row->keperluan) && isset($allJenisPerkara[$row->keperluan])) {
+                        $namaLayanan = $allJenisPerkara[$row->keperluan]->nama_layanan;
+                        
+                        return 'Informasi Syarat ' . $namaLayanan . '';
+                    }
+
+                    return $row->keperluan ?: '-';
+                })
+                ->addColumn('kontak_wa_html', function ($row) use ($allJenisPerkara) {
                     if (!$row->no_hp) return '<span class="text-muted small">-</span>';
                     
                     $phone = preg_replace('/[^0-9]/', '', $row->no_hp);
@@ -183,35 +197,67 @@ class SyaratPerkaraController extends Controller
                     }
 
                     $panggilan = ($row->jenis_kelamin === 'L') ? 'Bapak' : 'Ibu';
+                    
+                    // Tentukan Satker acuan (Satker Tujuan jika ada, jika tidak pakai Satker Asal)
+                    $satkerTarget = ($row->satker_tujuan_id && $row->satkerTujuan) ? $row->satkerTujuan : $row->satker;
+                    $satkerTargetName = $satkerTarget->satker_name ?? 'Mahkamah Syar\'iyah';
                     $satkerAwalName = $row->satker->satker_name ?? 'Mahkamah Syar\'iyah';
-                    $satkerTujuanName = $row->satkerTujuan->satker_name ?? null;
-                    $keperluanText = $row->keperluan ?: 'Layanan Informasi PTSP';
 
-                    $isDisposisi = ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id);
+                    $layananRaw = strtolower($row->jenis_layanan ?? '');
+                    $isJenisPerkaraUuid = Str::isUuid($row->keperluan) && isset($allJenisPerkara[$row->keperluan]);
+                    
+                    if ($isJenisPerkaraUuid) {
+                        $jenisPerkaraModel = $allJenisPerkara[$row->keperluan];
+                        $namaPerkara = $jenisPerkaraModel->nama_layanan;
 
-                    if ($isDisposisi) {
+                        // Generate link publik persyaratan perkara
+                        $urlPersyaratan = route('public.persyaratan-perkara.single', [
+                            'satker_vshort'    => $satkerTarget->satker_vshort,
+                            'jenis_perkara_id' => $jenisPerkaraModel->id,
+                        ]);
+
                         $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
-                        $pesanPemohon .= "Mohon maaf mengganggu waktunya " . $panggilan . " " . $row->nama_responden . " 🙏\n\n";
-                        $pesanPemohon .= "Kami menerima informasi dari *" . $satkerAwalName . "* bahwa " . $panggilan . " memiliki keperluan terkait:\n";
-                        $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
-                        $pesanPemohon .= "Karena keperluan tersebut berada dalam kewenangan *" . $satkerTujuanName . "*, permohonan " . $panggilan . " telah dialihkan kepada kami di PTSP *" . $satkerTujuanName . "*.\n\n";
-                        $pesanPemohon .= "Apakah ada informasi yang ingin ditanyakan lebih lanjut? Silakan balas pesan ini ya, kami siap membantu 😊";
+                        $pesanPemohon .= "Yth. " . $panggilan . " *" . $row->nama_responden . "* 🙏\n\n";
+                        $pesanPemohon .= "Berdasarkan kedatangan/keperluan " . $panggilan . " terkait persyatan perkara *" . $namaPerkara . "*, berikut kami kirimkan link informasi persyaratan resmi dari *" . $satkerTargetName . "*:\n\n";
+                        $pesanPemohon .= "🔗 " . $urlPersyaratan . "\n\n";
+                        $pesanPemohon .= "Silakan klik link di atas untuk melihat rincian syarat dan tahapan pengajuan. Jika ada hal yang ingin ditanyakan kembali, silakan balas pesan ini ya. Terima kasih 😊";
+
+                        $btnLabel = '<i class="fa-brands fa-whatsapp me-1"></i>Kirim Persyaratan';
+                        $btnClass = 'btn-success';
+
                     } else {
-                        $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
-                        $pesanPemohon .= "Terima kasih " . $panggilan . " " . $row->nama_responden . " sudah menghubungi PTSP " . $satkerAwalName . " 🙏\n\n";
-                        $pesanPemohon .= "Mengenai keperluan " . $panggilan . " terkait:\n";
-                        $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
-                        $pesanPemohon .= "Ada yang bisa kami bantu atau informasikan lebih lanjut? Silakan balas pesan ini ya, terima kasih 😊";
+                        $keperluanText = $row->keperluan ?: 'Layanan Informasi PTSP';
+                        $isDisposisi = ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id);
+
+                        if ($isDisposisi) {
+                            $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
+                            $pesanPemohon .= "Mohon maaf mengganggu waktunya " . $panggilan . " " . $row->nama_responden . " 🙏\n\n";
+                            $pesanPemohon .= "Kami menerima informasi dari *" . $satkerAwalName . "* bahwa " . $panggilan . " memiliki keperluan terkait:\n";
+                            $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
+                            $pesanPemohon .= "Karena keperluan tersebut berada dalam kewenangan *" . $satkerTargetName . "*, permohonan " . $panggilan . " telah dialihkan kepada kami di PTSP *" . $satkerTargetName . "*.\n\n";
+                            $pesanPemohon .= "Apakah ada informasi yang ingin ditanyakan lebih lanjut? Silakan balas pesan ini ya, kami siap membantu 😊";
+                        } else {
+                            $pesanPemohon = "Assalamu'alaikum wr. wb.,\n\n";
+                            $pesanPemohon .= "Terima kasih " . $panggilan . " " . $row->nama_responden . " sudah menghubungi PTSP " . $satkerAwalName . " 🙏\n\n";
+                            $pesanPemohon .= "Mengenai keperluan " . $panggilan . " terkait:\n";
+                            $pesanPemohon .= "👉 *" . $keperluanText . "*\n\n";
+                            $pesanPemohon .= "Ada yang bisa kami bantu atau informasikan lebih lanjut? Silakan balas pesan ini ya, terima kasih 😊";
+                        }
+
+                        $btnLabel = '<i class="fa-brands fa-whatsapp me-1"></i>Hubungi Pemohon';
+                        $btnClass = 'btn-success';
                     }
 
                     $waUrl = "https://wa.me/" . $phone . "?text=" . urlencode($pesanPemohon);
 
-                    if ($row->is_tindak_lanjut) {
+                    // Untuk jenis layanan Tatap Muka
+                    if ($layananRaw === 'tatap_muka') {
                         $btnClass = 'btn-outline-success';
-                        $statusText = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
+                    } elseif ($row->is_tindak_lanjut) {
+                        $btnClass = 'btn-outline-success';
+                        $btnLabel = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
                     } else {
                         $btnClass = 'btn-danger';
-                        $statusText = '<i class="fa-brands fa-whatsapp me-1"></i>Hubungi Pemohon';
                     }
 
                     return '
@@ -220,13 +266,13 @@ class SyaratPerkaraController extends Controller
                             id="btn-wa-' . $row->id . '" 
                             onclick="markAsFollowedUp(\'' . $row->id . '\')" 
                             class="btn btn-sm ' . $btnClass . ' fw-bold px-2 py-1" style="font-size: 11px;">
-                                ' . $statusText . '
+                                ' . $btnLabel . '
                             </a>
                             <span class="text-muted fw-semibold" style="font-size: 11px;">' . e($row->no_hp) . '</span>
                         </div>
                     ';
                 })
-                ->addColumn('action', function ($row) {
+                ->addColumn('action', function ($row) use ($allJenisPerkara) {
                     $btnHubungiPtspTujuan = '';
                     
                     if ($row->satkerTujuan && $row->satker_tujuan_id !== $row->satker_id) {
@@ -241,14 +287,19 @@ class SyaratPerkaraController extends Controller
 
                             $satkerAwalName = $row->satker->satker_name ?? 'Satker Asal';
                             $satkerTujuanName = $row->satkerTujuan->satker_name ?? 'Satker Tujuan';
-                            $keperluanText = $row->keperluan ?: 'Tidak dicantumkan';
+
+                            // Ambil nama layanan jika UUID
+                            $keperluanText = $row->keperluan;
+                            if (Str::isUuid($row->keperluan) && isset($allJenisPerkara[$row->keperluan])) {
+                                $keperluanText = $allJenisPerkara[$row->keperluan]->nama_layanan;
+                            }
 
                             $pesan = "Assalamu'alaikum wr. wb., Yth. Petugas PTSP " . $satkerTujuanName . ".\n\n";
                             $pesan .= "Pemberitahuan Disposisi Pengunjung PTSP:\n";
                             $pesan .= "• Nama Pemohon: " . $row->nama_responden . "\n";
                             $pesan .= "• Kontak Pemohon: " . $row->no_hp . "\n";
                             $pesan .= "• Satker Asal: " . $satkerAwalName . "\n";
-                            $pesan .= "• Keperluan: " . $keperluanText . "\n\n";
+                            $pesan .= "• Keperluan: " . ($keperluanText ?: 'Tidak dicantumkan') . "\n\n";
                             $pesan .= "Pemohon telah didisposisikan ke " . $satkerTujuanName . ". Mohon bantuan untuk dapat dilayani lebih lanjut. Terima kasih.";
 
                             $waUrl = "https://wa.me/" . $phonePtsp . "?text=" . urlencode($pesan);
@@ -306,8 +357,10 @@ class SyaratPerkaraController extends Controller
         $pengunjung     = PengunjungPtsp::with(['satker', 'satkerTujuan'])->latest('created_at')->get();
         $satkers        = Satker::orderBy('satker_name', 'asc')->get();
         $isSoundActive  = $notifPtsp ? (bool)$notifPtsp->is_pengunjung : false;
-
-        $namaSatker = $userSatker ? ($userSatker->satker_short_name ?? $userSatker->satker_name) : 'Mahkamah Syar\'iyah';
+        $pekerjaans     = Pekerjaan::orderBy('nama_pekerjaan', 'asc')->get();
+        $kabkots        = Kabkot::with('satker')->orderBy('nama_kabkot', 'asc')->get();
+        $jenisPerkaras  = JenisPerkara::all();
+        $namaSatker     = $userSatker ? ($userSatker->satker_short_name ?? $userSatker->satker_name) : 'Mahkamah Syar\'iyah';
         
         $seo = [
             'title'       => "Data Pengunjung PTSP - {$namaSatker} | SAPA MS ACEH",
@@ -317,7 +370,88 @@ class SyaratPerkaraController extends Controller
             'author'      => $namaSatker,
         ];
 
-        return view('Pages.PTSP.pengunjung_v2', compact('pengunjung', 'satkers', 'isMsAceh', 'isSoundActive', 'stats', 'seo', 'title'));
+        return view('Pages.PTSP.pengunjung_v2', compact(
+            'pengunjung', 
+            'satkers', 
+            'pekerjaans',
+            'kabkots',
+            'jenisPerkaras',
+            'isMsAceh', 
+            'isSoundActive', 
+            'stats', 
+            'seo', 
+            'title'
+        ));
+    }
+
+    public function storePengunjungOffline(Request $request)
+    {
+        // 1. Tangani Logika Email Optional / Simbol '-'
+        $emailInput = trim($request->input('email'));
+
+        if (empty($emailInput) || $emailInput === '-') {
+            $cleanName = Str::slug($request->input('nama_responden'), '');
+            
+            if (empty($cleanName)) {
+                $cleanName = 'pengunjung';
+            }
+
+            $emailGenerated = strtolower($cleanName) . '@gmail.com';
+            $request->merge(['email' => $emailGenerated]);
+        }
+
+        // 2. Validasi Input Form
+        $validated = $request->validate([
+            'nama_responden'   => 'required|string|max:255',
+            'no_hp'            => 'required|string|max:20',
+            'nik'              => 'nullable|string|max:16',
+            'email'            => 'nullable|email|max:255',
+            'kabkot_id'        => 'required|exists:kabkots,id',
+            'pekerjaan'        => 'required|string|max:255',
+            'jenis_kelamin'    => 'required|in:L,P',
+            'usia'             => 'required|string|max:30',
+            'pendidikan'       => 'required|string|max:255',
+            'jenis_perkara_id' => 'nullable|string',
+            'keperluan'        => 'nullable|string',
+        ]);
+
+        // 3. Tentukan Satker Awal & Satker Tujuan
+        $userSatker   = Auth::user()->satker;
+        $satkerAwalId = $userSatker ? $userSatker->id : null;
+        
+        $kabkot           = Kabkot::find($request->kabkot_id);
+        $satkerDomisiliId = $kabkot ? $kabkot->satker_id : null;
+
+        // Jika satker user SAMA dengan satker domisili kabkot -> satker_tujuan_id NULL
+        // Jika BEDA -> satker_tujuan_id diisi ID satker domisili
+        $satkerTujuanId = ($satkerAwalId === $satkerDomisiliId) ? null : $satkerDomisiliId;
+
+        // 4. Tentukan Value Kolom 'keperluan'
+        // Ambil dari jenis_perkara_id dulu, jika kosong baru ambil dari keperluan (textarea)
+        $keperluanValue = $request->input('jenis_perkara_id') ?: $request->input('keperluan');
+
+        // 5. Buat Payload untuk Insert DB
+        $dataToInsert = [
+            'satker_id'        => $satkerAwalId,
+            'satker_tujuan_id' => $satkerTujuanId,
+            'jenis_layanan'    => 'tatap_muka',
+            'nama_responden'   => $validated['nama_responden'],
+            'nik'              => $validated['nik'],
+            'no_hp'            => $validated['no_hp'],
+            'email'            => $validated['email'],
+            'jenis_kelamin'    => $validated['jenis_kelamin'],
+            'usia'             => $validated['usia'],
+            'pekerjaan'        => $validated['pekerjaan'],
+            'pendidikan'       => $validated['pendidikan'],
+            'keperluan'        => $keperluanValue,
+            'is_tindak_lanjut' => true,
+            'tindak_lanjut_at' => now(),
+        ];
+
+        // 6. Simpan ke Database
+        PengunjungPtsp::create($dataToInsert);
+
+        return redirect()->back()->with('success', 'Data pengunjung fisik berhasil disimpan.');
     }
 
     /**

@@ -87,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/syarat-perkara/toggle-status', [SyaratPerkaraController::class, 'toggleStatus'])->name('ptsp.syarat-perkara.toggle-status');
         
         // Handling Pengunjung
+        Route::post('/pengunjung/store-offline', [SyaratPerkaraController::class, 'storePengunjungOffline'])->name('ptsp.pengunjung.store-offline'); // <-- TAMBAHKAN KODE INI
         Route::put('/pengunjung/{id}', [SyaratPerkaraController::class, 'updatePengunjung'])->name('ptsp.pengunjung.update');
         Route::put('/pengunjung/{id}/disposisi', [SyaratPerkaraController::class, 'disposisiPengunjung'])->name('ptsp.pengunjung.disposisi');
         Route::delete('/pengunjung/{id}', [SyaratPerkaraController::class, 'destroyPengunjung'])->name('ptsp.pengunjung.destroy');

@@ -19,7 +19,7 @@ class PengunjungPtsp extends Model
     protected $fillable = [
         'satker_id',
         'satker_tujuan_id',
-        'jenis_layanan',
+        'jenis_layanan', // Sudah mencakup 'pesan', 'telepon', 'tatap_muka'
         'nama_responden',
         'nik',
         'no_hp',
@@ -30,8 +30,8 @@ class PengunjungPtsp extends Model
         'pendidikan',
         'keperluan',
         'is_tindak_lanjut',
-        'tindak_lanjut_at',      // Tambahan kolom waktu tindak lanjut
-        'durasi_tindak_lanjut',  // Tambahan kolom durasi (dalam detik)
+        'tindak_lanjut_at',
+        'durasi_tindak_lanjut',
     ];
 
     protected $casts = [
@@ -57,6 +57,22 @@ class PengunjungPtsp extends Model
         }
 
         return WorkCalendarService::formatSeconds($this->durasi_tindak_lanjut);
+    }
+
+    /**
+     * Helper untuk cek apakah pengunjung hadir secara Offline / Tatap Muka
+     */
+    public function getIsOfflineAttribute(): bool
+    {
+        return $this->jenis_layanan === 'tatap_muka';
+    }
+
+    /**
+     * Helper untuk cek apakah pengunjung Online (via Widget/Aplikasi)
+     */
+    public function getIsOnlineAttribute(): bool
+    {
+        return in_array($this->jenis_layanan, ['pesan', 'telepon']);
     }
 
     /**
