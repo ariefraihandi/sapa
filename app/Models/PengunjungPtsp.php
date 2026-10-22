@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\WorkCalendarService;
+use App\Models\JenisPerkara;
 use Illuminate\Support\Str;
 
 class PengunjungPtsp extends Model
@@ -19,7 +20,7 @@ class PengunjungPtsp extends Model
     protected $fillable = [
         'satker_id',
         'satker_tujuan_id',
-        'jenis_layanan', // Sudah mencakup 'pesan', 'telepon', 'tatap_muka'
+        'jenis_layanan', // 'pesan', 'telepon', 'tatap_muka'
         'nama_responden',
         'nik',
         'no_hp',
@@ -50,6 +51,37 @@ class PengunjungPtsp extends Model
         });
     }
 
+    /* =========================================================================
+     * ACCESSORS & HELPER ATTRIBUTES
+     * ========================================================================= */
+
+    /**
+     * Accessor untuk mengecek apakah keperluan berupa ID Jenis Perkara (UUID) atau Teks Biasa
+     */
+    public function getNamaKeperluanAttribute(): string
+    {
+        $value = $this->keperluan;
+
+        if (empty($value)) {
+            return '-';
+        }
+
+        // Cek apakah isi kolom keperluan adalah format UUID atau ID Integer/Numeric
+        if (Str::isUuid($value) || is_numeric($value)) {
+            $jenisPerkara = JenisPerkara::find($value);
+            if ($jenisPerkara && !empty($jenisPerkara->nama_layanan)) {
+                // 💡 Menambahkan narasi standar sebelum nama jenis perkaranya
+                return "Permohonan Informasi " . $jenisPerkara->nama_layanan;
+            }
+        }
+
+        // Jika teks biasa (misal: "kasir", "pendaftaran perkara"), kembalikan nilai aslinya
+        return $value;
+    }
+
+    /**
+     * Formatter Durasi Tindak Lanjut
+     */
     public function getFormatDurasiAttribute(): string
     {
         if (!$this->durasi_tindak_lanjut) {
@@ -60,7 +92,7 @@ class PengunjungPtsp extends Model
     }
 
     /**
-     * Helper untuk cek apakah pengunjung hadir secara Offline / Tatap Muka
+     * Helper untuk Cek Offline / Tatap Muka
      */
     public function getIsOfflineAttribute(): bool
     {
@@ -68,12 +100,16 @@ class PengunjungPtsp extends Model
     }
 
     /**
-     * Helper untuk cek apakah pengunjung Online (via Widget/Aplikasi)
+     * Helper untuk Cek Online
      */
     public function getIsOnlineAttribute(): bool
     {
         return in_array($this->jenis_layanan, ['pesan', 'telepon']);
     }
+
+    /* =========================================================================
+     * RELATIONS
+     * ========================================================================= */
 
     /**
      * Relasi ke Satker Awal / Penanggung Jawab Utama
@@ -84,7 +120,7 @@ class PengunjungPtsp extends Model
     }
 
     /**
-     * Relasi ke Satker Tujuan (Jika dialihkan / salah alamat)
+     * Relasi ke Satker Tujuan
      */
     public function satkerTujuan()
     {

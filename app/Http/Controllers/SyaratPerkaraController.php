@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\WorkCalendarService;
 use Carbon\Carbon;
+use PDF;
 
 class SyaratPerkaraController extends Controller
 {
@@ -382,6 +383,105 @@ class SyaratPerkaraController extends Controller
             'seo', 
             'title'
         ));
+    }
+
+    public function downloadPengunjungPdf(Request $request)
+    {
+        $request->validate([
+            'tipe_periode' => 'required|in:bulanan,triwulan',
+            'tahun'        => 'required|numeric',
+            'bulan'        => 'nullable|required_if:tipe_periode,bulanan|numeric|between:1,12',
+            'triwulan'     => 'nullable|required_if:tipe_periode,triwulan|in:1,2,3,4',
+        ]);
+
+        $user = Auth::user();
+        $userSatker = $user ? $user->satker : null;
+
+        $tipePeriode = $request->tipe_periode;
+        $tahun       = $request->tahun;
+        $bulan       = $request->bulan;
+        $triwulan    = $request->triwulan;
+
+        // Filter Query Data Pengunjung
+        $query = PengunjungPtsp::with(['satker', 'satkerTujuan'])
+            ->whereYear('created_at', $tahun);
+
+        if ($userSatker) {
+            $query->where('satker_id', $userSatker->id);
+        }
+
+        if ($tipePeriode === 'bulanan') {
+            $query->whereMonth('created_at', $bulan);
+            $periodeLabel = Carbon::createFromDate($tahun, $bulan, 1)->translatedFormat('F Y');
+        } else {
+            $triwulanMonths = [
+                1 => [1, 2, 3],
+                2 => [4, 5, 6],
+                3 => [7, 8, 9],
+                4 => [10, 11, 12],
+            ];
+            $months = $triwulanMonths[(int)$triwulan] ?? [1, 2, 3];
+
+            $query->whereIn(\DB::raw('MONTH(created_at)'), $months);
+            $periodeLabel = "Triwulan {$triwulan} Tahun {$tahun}";
+        }
+
+        $allPengunjung = $query->orderBy('created_at', 'asc')->get();
+
+        // 💡 PIPISAHKAN DATA PENGUNJUNG
+        // 1. Pengunjung PTSP Fisik (Tatap Muka)
+        $pengunjungFisik = $allPengunjung->filter(function($item) {
+            return $item->jenis_layanan === 'tatap_muka';
+        });
+
+        // 2. Pengguna Layanan SAPA (Online / Pesan / Telepon)
+        $penggunaSapa = $allPengunjung->filter(function($item) {
+            return $item->jenis_layanan !== 'tatap_muka';
+        });
+
+        $namaSatker = $userSatker ? ($userSatker->satker_name) : 'Mahkamah Syar\'iyah Aceh';
+
+        // Data PJ PTSP & Nama Kota
+        $ptspDaerah = $userSatker ? \App\Models\PtspDaerah::where('satker_id', $userSatker->id)->first() : null;
+        $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
+
+        $namaKota = 'Banda Aceh';
+        if ($userSatker) {
+            $isMsAceh = (
+                strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
+                strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
+            );
+
+            if (!$isMsAceh) {
+                $kabkot = \App\Models\Kabkot::where('satker_id', $userSatker->id)->first();
+                if ($kabkot && $kabkot->nama_kabkot) {
+                    $namaKota = $kabkot->nama_kabkot;
+                }
+            }
+        }
+
+        // Render ke View PDF
+        $pdf = PDF::loadView('Pages.PTSP.pdf_report_pengunjung', [
+            'pengunjungFisik' => $pengunjungFisik,
+            'penggunaSapa'    => $penggunaSapa,
+            'totalKeseluruhan'=> $allPengunjung->count(),
+            'satker'          => $userSatker,
+            'namaSatker'      => $namaSatker,
+            'periodeLabel'    => $periodeLabel,
+            'namaPj'          => $namaPj,
+            'namaKota'        => $namaKota
+        ], [], [
+            'format'        => 'A4',
+            'orientation'   => 'L',
+            'margin_left'   => 10,
+            'margin_right'  => 10,
+            'margin_top'    => 10,
+            'margin_bottom' => 20, // Tambah space bottom untuk footer otomatis
+        ]);
+
+        $filename = 'Laporan_Pengunjung_PTSP_' . str_replace(' ', '_', $namaSatker) . '_' . Str::slug($periodeLabel) . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
     public function storePengunjungOffline(Request $request)

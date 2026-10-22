@@ -11,6 +11,9 @@ use App\Http\Controllers\BotDashboardController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Middleware\CheckMenuAccess;
 
+Route::post('/ptsp/pengunjung/download-pdf', [SyaratPerkaraController::class, 'downloadPengunjungPdf'])
+    ->name('ptsp.pengunjung.download_pdf');
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes (Akses Tanpa Login)

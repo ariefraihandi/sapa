@@ -91,10 +91,16 @@
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0"><i class="fas fa-university me-2"></i>Data Kunjungan</h5>
-            <!-- Tombol Pemicu Modal -->
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahPengunjungFisik">
-                <i class="fas fa-user-plus me-1"></i> Tambah Pengunjung Fisik
-            </button>
+            <div class="d-flex gap-2">
+                <!-- Tombol Cetak PDF -->
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalFilterPdf">
+                    <i class="fas fa-file-pdf me-1"></i> Cetak Laporan PDF
+                </button>
+                <!-- Tombol Tambah Pengunjung -->
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahPengunjungFisik">
+                    <i class="fas fa-user-plus me-1"></i> Tambah Pengunjung Fisik
+                </button>
+            </div>
         </div>
     </div>
 
@@ -464,6 +470,86 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalFilterPdf" tabindex="-1" aria-labelledby="modalFilterPdfLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalFilterPdfLabel">
+                    <i class="fas fa-file-pdf me-2"></i>Cetak Laporan Pengunjung PTSP
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('ptsp.pengunjung.download_pdf') }}" method="POST" target="_blank">
+                @csrf
+                <div class="modal-body">
+                    <!-- Select Tipe Periode -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Pilih Tipe Laporan</label>
+                        <select name="tipe_periode" id="tipe_periode" class="form-select" required onchange="toggleFilterPeriode()">
+                            <option value="bulanan" selected>Laporan Bulanan</option>
+                            <option value="triwulan">Laporan Triwulan</option>
+                        </select>
+                    </div>
+
+                    <!-- Container Filter Bulanan -->
+                    <div class="mb-3" id="container_bulanan">
+                        <label class="form-label fw-bold">Pilih Bulan</label>
+                        <select name="bulan" id="bulan" class="form-select">
+                            @php
+                                $daftarBulan = [
+                                    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                                    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                                    9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                                ];
+                                $currentMonth = date('n');
+                            @endphp
+                            @foreach($daftarBulan as $key => $namaBulan)
+                                <option value="{{ $key }}" {{ $currentMonth == $key ? 'selected' : '' }}>
+                                    {{ $namaBulan }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Container Filter Triwulan -->
+                    <div class="mb-3 d-none" id="container_triwulan">
+                        <label class="form-label fw-bold">Pilih Triwulan</label>
+                        <select name="triwulan" id="triwulan" class="form-select">
+                            <option value="1">Triwulan I (Januari - Maret)</option>
+                            <option value="2">Triwulan II (April - Juni)</option>
+                            <option value="3">Triwulan III (Juli - September)</option>
+                            <option value="4">Triwulan IV (Oktober - Desember)</option>
+                        </select>
+                    </div>
+
+                    <!-- Select Tahun Dinamis (-5 dan +5 dari tahun sekarang) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Pilih Tahun</label>
+                        <select name="tahun" id="tahun" class="form-select" required>
+                            @php
+                                $tahunSekarang = (int) date('Y');
+                                $startTahun = $tahunSekarang - 5;
+                                $endTahun = $tahunSekarang + 5;
+                            @endphp
+                            @for($t = $startTahun; $t <= $endTahun; $t++)
+                                <option value="{{ $t }}" {{ $t == $tahunSekarang ? 'selected' : '' }}>
+                                    {{ $t }}
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-download me-1"></i> Download PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -746,4 +832,20 @@
             });
         });
     </script>
+
+    <script>
+        function toggleFilterPeriode() {
+            const tipe = document.getElementById('tipe_periode').value;
+            const containerBulanan = document.getElementById('container_bulanan');
+            const containerTriwulan = document.getElementById('container_triwulan');
+
+            if (tipe === 'bulanan') {
+                containerBulanan.classList.remove('d-none');
+                containerTriwulan.classList.add('d-none');
+            } else {
+                containerBulanan.classList.add('d-none');
+                containerTriwulan.classList.remove('d-none');
+            }
+        }
+        </script>
 @endpush
