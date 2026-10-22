@@ -251,18 +251,42 @@ class SyaratPerkaraController extends Controller
 
                     $waUrl = "https://wa.me/" . $phone . "?text=" . urlencode($pesanPemohon);
 
-                    // Untuk jenis layanan Tatap Muka
+                    // 💡 LOGIKA DUA TOMBOL KHUSUS TATAP MUKA & ONLINE
+                    $extraButtonHtml = '';
+
                     if ($layananRaw === 'tatap_muka') {
+                        if (!$row->is_tindak_lanjut) {
+                            // Jika belum ditindaklanjuti -> Tombol Merah "Selesai Melayani" di atas
+                            $extraButtonHtml = '
+                                <button type="button" 
+                                    id="btn-selesai-' . $row->id . '" 
+                                    onclick="selesaiMelayaniFisik(\'' . $row->id . '\')" 
+                                    class="btn btn-sm btn-danger fw-bold px-2 py-1" style="font-size: 11px;">
+                                    <i class="fa-solid fa-clock me-1"></i>Selesai Melayani
+                                </button>';
+                        } else {
+                            // Jika SUDAH ditindaklanjuti -> Tampilkan indikator "Ditindaklanjuti" di atas
+                            $extraButtonHtml = '
+                                <span class="btn btn-sm btn-outline-success fw-bold px-2 py-1 disabled" style="font-size: 11px;">
+                                    <i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti
+                                </span>';
+                        }
+                        
+                        // Tombol WA (Kirim Persyaratan / Hubungi Pemohon) tetap tampil dengan style hijau outline/solid
                         $btnClass = 'btn-outline-success';
+
                     } elseif ($row->is_tindak_lanjut) {
+                        // Layanan selain tatap muka (pesan/telepon) yang sudah ditindaklanjuti
                         $btnClass = 'btn-outline-success';
                         $btnLabel = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
                     } else {
+                        // Layanan selain tatap muka yang belum ditindaklanjuti
                         $btnClass = 'btn-danger';
                     }
 
                     return '
-                        <div class="d-flex flex-column align-items-center gap-1">
+                        <div class="d-flex flex-column align-items-center gap-1" id="container-action-' . $row->id . '">
+                            ' . $extraButtonHtml . '
                             <a href="' . $waUrl . '" target="_blank" 
                             id="btn-wa-' . $row->id . '" 
                             onclick="markAsFollowedUp(\'' . $row->id . '\')" 
@@ -544,8 +568,7 @@ class SyaratPerkaraController extends Controller
             'pekerjaan'        => $validated['pekerjaan'],
             'pendidikan'       => $validated['pendidikan'],
             'keperluan'        => $keperluanValue,
-            'is_tindak_lanjut' => true,
-            'tindak_lanjut_at' => now(),
+            'is_tindak_lanjut' => false,            
         ];
 
         // 6. Simpan ke Database
@@ -554,9 +577,6 @@ class SyaratPerkaraController extends Controller
         return redirect()->back()->with('success', 'Data pengunjung fisik berhasil disimpan.');
     }
 
-    /**
-     * 2. PRIVATE METHOD KALKULASI METRIK & AVG (DIPAKAI CONTROLLER UTAMA)
-     */
     private function calculatePtspStats($userSatker)
     {
         $statsQuery = PengunjungPtsp::query();

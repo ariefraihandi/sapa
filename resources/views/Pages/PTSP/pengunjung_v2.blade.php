@@ -592,6 +592,91 @@
             })
             .catch(error => console.error('Error:', error));
         }
+
+        function selesaiMelayaniFisik(id) {
+            Swal.fire({
+                title: 'Selesai Melayani?',
+                text: 'Apakah pelayanan fisik untuk pengunjung ini sudah selesai?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545', // Warna merah
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-solid fa-check me-1"></i>Ya, Selesai!',
+                cancelButtonText: 'Batal',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Tampilkan loading saat proses fetch berlangsung
+                    Swal.fire({
+                        title: 'Memproses...',
+                        text: 'Sedang menyimpan status pelayanan',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    fetch(`/ptsp/pengunjung/${id}/tindak-lanjut`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Sembunyikan tombol merah "Selesai Melayani"
+                            const btnSelesai = document.getElementById(`btn-selesai-${id}`);
+                            if (btnSelesai) {
+                                btnSelesai.remove();
+                            }
+
+                            // Ubah tombol WA menjadi status "Ditindaklanjuti"
+                            const btnWa = document.getElementById(`btn-wa-${id}`);
+                            if (btnWa) {
+                                btnWa.className = 'btn btn-sm btn-outline-success fw-bold px-2 py-1';
+                                btnWa.style.fontSize = '11px';
+                                btnWa.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
+                            }
+
+                            // Reload DataTables jika ada agar kolom durasi ter-update
+                            if (typeof table !== 'undefined') {
+                                table.ajax.reload(null, false);
+                            }
+
+                            // Tampilkan notifikasi sukses SweetAlert
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: data.message || 'Pelayanan berhasil diselesaikan.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal!',
+                                text: data.message || 'Gagal memperbarui status.'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Akses Ditolak / Terjadi Kesalahan',
+                            text: error.message || 'Terjadi kesalahan sistem.'
+                        });
+                    });
+                }
+            });
+        }
     </script>
 
     <!-- 2. SCRIPT INISIALISASI DATATABLES -->
