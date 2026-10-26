@@ -9,6 +9,7 @@ use App\Models\PengunjungPtsp;
 use App\Models\Pengaduan;
 use App\Models\JenisPerkara;
 use App\Models\SyaratPerkara;
+use App\Models\Satker;
 
 class DashboardController extends Controller
 {
@@ -27,30 +28,23 @@ class DashboardController extends Controller
         // Query Base
         $pengunjungQuery = PengunjungPtsp::query();
         $pengaduanQuery  = Pengaduan::query();
-        $syaratQuery     = SyaratPerkara::query();
 
         // Filter Satker jika User Daerah
         if (!$isMsAceh && $user->satker_id) {
             $pengunjungQuery->where('satker_id', $user->satker_id);
             $pengaduanQuery->where('satker_id', $user->satker_id);
-            $syaratQuery->where('satker_id', $user->satker_id);
         }
 
         // ================= 1. METRIK SUMMARY CARDS =================
         $totalPengunjung  = (clone $pengunjungQuery)->count();
         $totalPengaduan   = (clone $pengaduanQuery)->count();
         $pengaduanSelesai = (clone $pengaduanQuery)->where('is_tindak_lanjut', true)->count();
-        $totalSyarat      = (clone $syaratQuery)->count();
+        $persenPengaduan  = $totalPengaduan > 0 ? round(($pengaduanSelesai / $totalPengaduan) * 100) : 0;
 
-        // Persentase Tindak Lanjut Pengaduan
-        $persenPengaduan = $totalPengaduan > 0 ? round(($pengaduanSelesai / $totalPengaduan) * 100) : 0;
-
-        // ================= 2. DATA CHART (BULANAN TH SEKARANG) =================
+        // ================= 2. DATA CHART BULANAN =================
         $chartBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        
         $currentYear = date('Y');
 
-        // Optimasi Query Chart: Ambil Agregat per Bulan sekaligus (Mencegah Loop 24x Query)
         $pengunjungPerBulanRaw = (clone $pengunjungQuery)
             ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
             ->whereYear('created_at', $currentYear)
@@ -77,19 +71,84 @@ class DashboardController extends Controller
         $layananPesan   = (clone $pengunjungQuery)->where('jenis_layanan', 'pesan')->count();
         $layananTelepon = (clone $pengunjungQuery)->where('jenis_layanan', 'telepon')->count();
 
-        // ================= 3. RECENT LIST =================
-        $recentPengunjung = (clone $pengunjungQuery)->with('satker')->latest()->take(5)->get();
-        $recentPengaduan  = (clone $pengaduanQuery)->with('satker')->latest()->take(5)->get();
+        // ================= 3. REKAP DATA PER SATKER =================
+        $satkerListQuery = Satker::orderBy('satker_name', 'asc');
+        if (!$isMsAceh && $user->satker_id) {
+            $satkerListQuery->where('id', $user->satker_id);
+        }
+        $satkers = $satkerListQuery->get();
 
-        // DYNAMIC META SEO UNTUK DASHBOARD UTAMA
-        $namaSatkerText = $satkerName ?: 'Mahkamah Syar\'iyah Aceh';
+        // Total Master Jenis Perkara
+        $totalJenisPerkaraMaster = JenisPerkara::count();
+
+        // Aggregate Syarat Perkara per Satker
+        $syaratPerSatkerRaw = SyaratPerkara::with('jenisPerkara')
+            ->get()
+            ->groupBy('satker_id');
+
+        $rekapSatker = $satkers->map(function ($satker) use ($syaratPerSatkerRaw, $totalJenisPerkaraMaster) {
+            // A. Pengunjung Fisik vs SAPA Online (Pesan & Telepon)
+            $pengunjungFisik = PengunjungPtsp::where('satker_id', $satker->id)
+                ->where('jenis_layanan', 'tatap_muka')
+                ->count();
+
+            $penggunaSapa = PengunjungPtsp::where('satker_id', $satker->id)
+                ->whereIn('jenis_layanan', ['pesan', 'telepon'])
+                ->count();
+
+            // B. Cek Kesiapan Jenis Perkara Aktif
+            $syaratItems = $syaratPerSatkerRaw->get($satker->id, collect());
+            $jenisPerkaraGrouped = $syaratItems->groupBy('jenis_perkara_id');
+
+            $jenisPerkaraAktifList = [];
+            $totalJenisPerkaraAktif = 0;
+
+            foreach ($jenisPerkaraGrouped as $jenisId => $items) {
+                $totalDocs = $items->count();
+                $totalAktif = $items->where('is_active', 1)->count();
+                $first = $items->first();
+
+                if ($totalAktif > 0 && $first && $first->jenisPerkara) {
+                    $totalJenisPerkaraAktif++;
+                    $jenisPerkaraAktifList[] = (object) [
+                        'id' => $jenisId,
+                        'nama_layanan' => $first->jenisPerkara->nama_layanan,
+                        'kategori' => $first->jenisPerkara->kategori ?? 'Lainnya',
+                        'total_dokumen' => $totalDocs,
+                        'total_aktif' => $totalAktif,
+                        'is_full' => ($totalDocs === $totalAktif)
+                    ];
+                }
+            }
+
+            return (object) [
+                'satker_id'                => $satker->id,
+                'satker_name'              => $satker->satker_name,
+                'satker_short_name'        => $satker->satker_short_name ?? $satker->satker_name,
+                'satker_vshort'            => $satker->satker_vshort,
+                'pengunjung_fisik'         => $pengunjungFisik,
+                'pengguna_sapa'            => $penggunaSapa,
+                'total_interaksi'          => $pengunjungFisik + $penggunaSapa,
+                'total_jenis_perkara_aktif' => $totalJenisPerkaraAktif,
+                'total_jenis_perkara_master'=> $totalJenisPerkaraMaster,
+                'jenis_perkara_aktif_list' => $jenisPerkaraAktifList,
+            ];
+        });
+
+        // Data khusus untuk Chart Penggunaan SAPA Per Satker
+        $categoriesSatker          = $rekapSatker->pluck('satker_short_name')->toArray();
+        $dataPengunjungFisikSatker = $rekapSatker->pluck('pengunjung_fisik')->toArray();
+        $dataPenggunaSapaSatker    = $rekapSatker->pluck('pengguna_sapa')->toArray();
+
+        // RECENT LIST
+        $recentPengunjung = (clone $pengunjungQuery)->with('satker')->latest()->take(5)->get();
 
         $seo = [
-            'title'       => "Dashboard - {$namaSatkerText} | SAPA MS ACEH",
-            'description' => "Ringkasan metrik statistik pengunjung PTSP, laporan pengaduan, dan rekapitulasi layanan pada {$namaSatkerText}.",
-            'keywords'    => "dashboard sapa ms, statistik ptsp, monitoring layanan hukum, rekap pengaduan ms aceh",
-            'robots'      => 'noindex, nofollow', // Halaman ringkasan eksekutif internal admin, wajib noindex
-            'author'      => $namaSatkerText,
+            'title'       => "Dashboard Utama | SAPA MS ACEH",
+            'description' => "Monitoring layanan PTSP dan kesiapan syarat perkara Mahkamah Syar'iyah.",
+            'keywords'    => "dashboard sapa, monitoring ptsp, syarat perkara ms aceh",
+            'robots'      => 'noindex, nofollow',
+            'author'      => $satkerName ?: 'Mahkamah Syar\'iyah Aceh',
         ];
 
         return view('Pages.Dashboard.index', compact(
@@ -100,14 +159,16 @@ class DashboardController extends Controller
             'totalPengaduan',
             'pengaduanSelesai',
             'persenPengaduan',
-            'totalSyarat',
             'chartBulan',
             'dataPengunjungPerBulan',
             'dataPengaduanPerBulan',
             'layananPesan',
             'layananTelepon',
             'recentPengunjung',
-            'recentPengaduan',
+            'rekapSatker',
+            'categoriesSatker',
+            'dataPengunjungFisikSatker',
+            'dataPenggunaSapaSatker',
             'seo'
         ));
     }
