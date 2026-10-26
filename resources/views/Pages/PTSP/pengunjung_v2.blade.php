@@ -473,6 +473,7 @@
         </div>
     </div>
 
+    <!-- Modal Filter PDF -->
     <div class="modal fade" id="modalFilterPdf" tabindex="-1" aria-labelledby="modalFilterPdfLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -485,6 +486,20 @@
                 <form action="{{ route('ptsp.pengunjung.download_pdf') }}" method="POST" target="_blank">
                     @csrf
                     <div class="modal-body">
+                        
+                        @if($isMsAceh)
+                            <!-- Select Filter Satker Khusus User MS Aceh -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Pilih Satker</label>
+                                <select name="satker_id" id="satker_id" class="form-select" required>
+                                    <option value="all" selected>-- Seluruh Satker (MS Aceh & Satker Daerah) --</option>
+                                    @foreach($satkers as $stk)
+                                        <option value="{{ $stk->id }}">{{ $stk->satker_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
                         <!-- Select Tipe Periode -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">Pilih Tipe Laporan</label>
@@ -525,7 +540,7 @@
                             </select>
                         </div>
 
-                        <!-- Select Tahun Dinamis (-5 dan +5 dari tahun sekarang) -->
+                        <!-- Select Tahun -->
                         <div class="mb-3">
                             <label class="form-label fw-bold">Pilih Tahun</label>
                             <select name="tahun" id="tahun" class="form-select" required>

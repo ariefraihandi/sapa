@@ -416,24 +416,46 @@ class SyaratPerkaraController extends Controller
             'tahun'        => 'required|numeric',
             'bulan'        => 'nullable|required_if:tipe_periode,bulanan|numeric|between:1,12',
             'triwulan'     => 'nullable|required_if:tipe_periode,triwulan|in:1,2,3,4',
+            'satker_id'    => 'nullable|string',
         ]);
 
         $user = Auth::user();
         $userSatker = $user ? $user->satker : null;
 
+        $isMsAceh = ($userSatker && (
+            strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
+            strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
+        ));
+
         $tipePeriode = $request->tipe_periode;
         $tahun       = $request->tahun;
         $bulan       = $request->bulan;
         $triwulan    = $request->triwulan;
+        $selectedSatkerId = $request->satker_id;
 
         // Filter Query Data Pengunjung
         $query = PengunjungPtsp::with(['satker', 'satkerTujuan'])
             ->whereYear('created_at', $tahun);
 
-        if ($userSatker) {
-            $query->where('satker_id', $userSatker->id);
+        $isAllSatker = false;
+
+        if ($isMsAceh) {
+            if ($selectedSatkerId && $selectedSatkerId !== 'all') {
+                $query->where('satker_id', $selectedSatkerId);
+                $targetSatker = Satker::find($selectedSatkerId);
+                $namaSatker = $targetSatker ? $targetSatker->satker_name : 'Mahkamah Syar\'iyah';
+            } else {
+                $isAllSatker = true;
+                $namaSatker = 'SELURUH MAHKAMAH SYAR\'IYAH SE-ACEH';
+            }
+        } else {
+            if ($userSatker) {
+                $query->where('satker_id', $userSatker->id);
+            }
+            $namaSatker = $userSatker ? $userSatker->satker_name : 'Mahkamah Syar\'iyah';
         }
 
+        // Filter Periode Waktu
         if ($tipePeriode === 'bulanan') {
             $query->whereMonth('created_at', $bulan);
             $periodeLabel = Carbon::createFromDate($tahun, $bulan, 1)->translatedFormat('F Y');
@@ -452,58 +474,67 @@ class SyaratPerkaraController extends Controller
 
         $allPengunjung = $query->orderBy('created_at', 'asc')->get();
 
-        // 💡 PIPISAHKAN DATA PENGUNJUNG
-        // 1. Pengunjung PTSP Fisik (Tatap Muka)
-        $pengunjungFisik = $allPengunjung->filter(function($item) {
-            return $item->jenis_layanan === 'tatap_muka';
-        });
+        // Mapping Penandatangan (PJ PTSP) & Kota
+        if ($isAllSatker || $isMsAceh) {
+            // Ambil Penanggung Jawab dari MS Aceh
+            $msAcehSatker = Satker::where('satker_vshort', 'ms-aceh')
+                ->orWhere('satker_short_name', 'MS ACEH')
+                ->first();
+            
+            $ptspDaerah = $msAcehSatker ? \App\Models\PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
+            $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
+            $namaKota = 'Banda Aceh';
+        } else {
+            // Ambil Penanggung Jawab dari Satker Terkait
+            $targetSatkerId = ($selectedSatkerId && $selectedSatkerId !== 'all') ? $selectedSatkerId : ($userSatker ? $userSatker->id : null);
+            $ptspDaerah = $targetSatkerId ? \App\Models\PtspDaerah::where('satker_id', $targetSatkerId)->first() : null;
+            $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
 
-        // 2. Pengguna Layanan SAPA (Online / Pesan / Telepon)
-        $penggunaSapa = $allPengunjung->filter(function($item) {
-            return $item->jenis_layanan !== 'tatap_muka';
-        });
-
-        $namaSatker = $userSatker ? ($userSatker->satker_name) : 'Mahkamah Syar\'iyah Aceh';
-
-        // Data PJ PTSP & Nama Kota
-        $ptspDaerah = $userSatker ? \App\Models\PtspDaerah::where('satker_id', $userSatker->id)->first() : null;
-        $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
-
-        $namaKota = 'Banda Aceh';
-        if ($userSatker) {
-            $isMsAceh = (
-                strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
-                strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
-            );
-
-            if (!$isMsAceh) {
-                $kabkot = \App\Models\Kabkot::where('satker_id', $userSatker->id)->first();
+            $namaKota = 'Banda Aceh';
+            if ($targetSatkerId) {
+                $kabkot = \App\Models\Kabkot::where('satker_id', $targetSatkerId)->first();
                 if ($kabkot && $kabkot->nama_kabkot) {
                     $namaKota = $kabkot->nama_kabkot;
                 }
             }
         }
 
-        // Render ke View PDF
+        // Pemisahan Data & Grouping per-Satker jika Seluruh Satker
+        if ($isAllSatker) {
+            $groupedPengunjung = $allPengunjung->groupBy(function($item) {
+                return $item->satker->satker_name ?? 'Lainnya';
+            });
+
+            $pengunjungFisik = null;
+            $penggunaSapa = null;
+        } else {
+            $groupedPengunjung = null;
+            $pengunjungFisik = $allPengunjung->filter(fn($item) => $item->jenis_layanan === 'tatap_muka');
+            $penggunaSapa = $allPengunjung->filter(fn($item) => $item->jenis_layanan !== 'tatap_muka');
+        }
+
+        // Render View PDF
         $pdf = PDF::loadView('Pages.PTSP.pdf_report_pengunjung', [
-            'pengunjungFisik' => $pengunjungFisik,
-            'penggunaSapa'    => $penggunaSapa,
-            'totalKeseluruhan'=> $allPengunjung->count(),
-            'satker'          => $userSatker,
-            'namaSatker'      => $namaSatker,
-            'periodeLabel'    => $periodeLabel,
-            'namaPj'          => $namaPj,
-            'namaKota'        => $namaKota
+            'isAllSatker'       => $isAllSatker,
+            'groupedPengunjung' => $groupedPengunjung,
+            'pengunjungFisik'   => $pengunjungFisik,
+            'penggunaSapa'      => $penggunaSapa,
+            'totalKeseluruhan'  => $allPengunjung->count(),
+            'satker'            => $userSatker,
+            'namaSatker'        => $namaSatker,
+            'periodeLabel'      => $periodeLabel,
+            'namaPj'            => $namaPj,
+            'namaKota'          => $namaKota
         ], [], [
             'format'        => 'A4',
             'orientation'   => 'L',
             'margin_left'   => 10,
             'margin_right'  => 10,
             'margin_top'    => 10,
-            'margin_bottom' => 20, // Tambah space bottom untuk footer otomatis
+            'margin_bottom' => 20,
         ]);
 
-        $filename = 'Laporan_Pengunjung_PTSP_' . str_replace(' ', '_', $namaSatker) . '_' . Str::slug($periodeLabel) . '.pdf';
+        $filename = 'Laporan_Pengunjung_PTSP_' . Str::slug($namaSatker) . '_' . Str::slug($periodeLabel) . '.pdf';
 
         return $pdf->stream($filename);
     }
@@ -788,6 +819,7 @@ class SyaratPerkaraController extends Controller
             'seo'              => $seo,
         ]);
     }
+
     public function edit(Request $request)
     {
         $id = $request->query('id');
