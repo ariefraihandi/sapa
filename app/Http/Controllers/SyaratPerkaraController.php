@@ -1176,17 +1176,19 @@ class SyaratPerkaraController extends Controller
         ));
 
         if ($isMsAceh) {
-            // 1. Data Paling Baru khusus MS Aceh (Utamakan satker_tujuan_id jika ada)
+            // 1. Data Paling Baru khusus MS Aceh (Kecualikan tatap_muka)
             $latestMsAcehRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) = ?', [$userSatker->id])
+                ->where('jenis_layanan', '!=', 'tatap_muka') // Filter selain Tatap Muka
                 ->latest('updated_at')
                 ->first();
 
-            // 2. Data Paling Baru dari Seluruh Satker Daerah (Utamakan satker_tujuan_id jika ada)
+            // 2. Data Paling Baru dari Seluruh Satker Daerah (Kecualikan tatap_muka)
             $latestDaerahRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) != ?', [$userSatker->id])
+                ->where('jenis_layanan', '!=', 'tatap_muka') // Filter selain Tatap Muka
                 ->latest('updated_at')
                 ->first();
 
-            // Kombinasi ID + Timestamp (updated_at / created_at) untuk deteksi akurat
+            // Kombinasi ID + Timestamp untuk deteksi akurat
             $latestMsAcehKey = $latestMsAcehRecord 
                 ? $latestMsAcehRecord->id . '_' . ($latestMsAcehRecord->updated_at ?? $latestMsAcehRecord->created_at)->timestamp 
                 : null;
@@ -1202,11 +1204,12 @@ class SyaratPerkaraController extends Controller
                 'latest_daerah_id' => $latestDaerahKey,
             ]);
         } else {
-            // 3. Satker Daerah Biasa
+            // 3. Satker Daerah Biasa (Kecualikan tatap_muka)
             $latestKey = null;
 
             if ($userSatker) {
                 $latestRecord = PengunjungPtsp::whereRaw('COALESCE(satker_tujuan_id, satker_id) = ?', [$userSatker->id])
+                    ->where('jenis_layanan', '!=', 'tatap_muka') // Filter selain Tatap Muka
                     ->latest('updated_at')
                     ->first();
 
