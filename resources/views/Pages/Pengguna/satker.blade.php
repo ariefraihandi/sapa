@@ -18,14 +18,14 @@
         </div>
     </div>
 
-    <!-- Filter & Aksi Tambah Satker -->
+    <!-- Filter & Aksi Tambah Satker / Kabkot -->
     <div class="row mb-3">
         <div class="col-12">
             <div class="card shadow-sm border-0 mb-0">
                 <div class="card-body py-2 px-3">
                     <form action="{{ url('/pengguna/satker') }}" method="GET" class="row g-2 align-items-center">
                         <!-- Pencarian Nama Satker / Kode -->
-                        <div class="col-md-9">
+                        <div class="col-md-6">
                             <div class="input-group input-group-sm">
                                 <input type="text" name="search" class="form-control" placeholder="Cari nama satker, singkatan, alamat, atau email..." value="{{ request('search') }}">
                                 <button type="submit" class="btn btn-primary btn-sm">
@@ -39,9 +39,12 @@
                             </div>
                         </div>
 
-                        <!-- Tombol Tambah Satker -->
-                        <div class="col-md-3 text-md-end">
-                            <button type="button" class="btn btn-sm btn-success text-white w-100" data-bs-toggle="modal" data-bs-target="#modalTambahSatker" style="background-color: #0b6e39; border-color: #0b6e39;">
+                        <!-- Tombol Tambah Satker & Kabkot -->
+                        <div class="col-md-6 text-md-end d-flex gap-2 justify-content-md-end">
+                            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalTambahKabkot">
+                                <i class="fa fa-map-marker me-1"></i> Tambah Kab/Kota
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success text-white" data-bs-toggle="modal" data-bs-target="#modalTambahSatker" style="background-color: #0b6e39; border-color: #0b6e39;">
                                 <i class="fa fa-plus me-1"></i> Tambah Satker Baru
                             </button>
                         </div>
@@ -51,7 +54,7 @@
         </div>
     </div>
 
-    <!-- Data Table Satker (COMPACT VERSION) -->
+    <!-- Data Table Satker -->
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -67,6 +70,7 @@
                                 <tr>
                                     <th class="ps-3 py-2" style="width: 40px;">No</th>
                                     <th class="py-2">Satuan Kerja</th>
+                                    <th class="py-2">Wilayah Yurisdiksi (Kab/Kota)</th>
                                     <th class="py-2">Kode / VShort</th>
                                     <th class="py-2">Kontak & Alamat</th>
                                     <th class="text-center py-2">Total User</th>
@@ -94,6 +98,16 @@
                                                 </div>
                                             </div>
                                         </td>
+                                        <!-- Menampilkan Daftar Kab/Kota Relasi -->
+                                        <td class="py-2">
+                                            @forelse($satker->kabkots as $kab)
+                                                <span class="badge bg-soft-primary text-primary border me-1 my-1" style="font-size: 0.68rem; background-color: #e3f2fd;">
+                                                    <i class="fa fa-map-marker me-1"></i>{{ $kab->nama_kabkot }}
+                                                </span>
+                                            @empty
+                                                <span class="text-muted small fs-7"><em>Belum diatur</em></span>
+                                            @endforelse
+                                        </td>
                                         <td class="py-2">
                                             <code class="text-primary font-weight-bold" style="font-size: 0.75rem;">{{ $satker->satker_vshort }}</code>
                                         </td>
@@ -112,7 +126,7 @@
                                         <td class="text-center py-2">
                                             <a href="{{ url('/pengguna/admin?satker_id=' . $satker->id) }}" title="Lihat daftar pengguna satker ini">
                                                 <span class="badge bg-soft-success text-success font-weight-bold px-2 py-1" style="font-size: 0.7rem; background-color: #e8f5e9;">
-                                                    <i class="fa fa-users me-1"></i> {{ $satker->users_count ?? $satker->user_count ?? 0 }} User
+                                                    <i class="fa fa-users me-1"></i> {{ $satker->users_count ?? 0 }} User
                                                 </span>
                                             </a>
                                         </td>
@@ -129,7 +143,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
+                                        <td colspan="7" class="text-center text-muted py-4">
                                             <i class="flaticon-381-home display-4 d-block mb-1 text-muted"></i>
                                             Belum ada data Satuan Kerja yang ditemukan.
                                         </td>
@@ -140,6 +154,40 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TAMBAH KABKOT -->
+<div class="modal fade" id="modalTambahKabkot" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title text-white mb-0"><i class="fa fa-map-marker me-2"></i> Tambah Kab/Kota Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('kabkot.store') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4 text-dark">
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Satuan Kerja Pengampu <span class="text-danger">*</span></label>
+                        <select name="satker_id" class="form-select form-select-sm" required>
+                            <option value="">-- Pilih Satker --</option>
+                            @foreach($satkers as $s)
+                                <option value="{{ $s->id }}">{{ $s->satker_name }} ({{ $s->satker_vshort }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Nama Kabupaten / Kota <span class="text-danger">*</span></label>
+                        <input type="text" name="nama_kabkot" class="form-control form-control-sm" placeholder="Contoh: Kabupaten Aceh Besar" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Simpan Kab/Kota</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

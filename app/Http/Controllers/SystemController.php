@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Menu;
 use App\Models\Submenu;
 use App\Models\Satker;
+use App\Models\Kabkot;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -95,8 +96,8 @@ class SystemController extends Controller
 
     public function satker()
     {
-        // Mengambil data Satker beserta total user/admin di dalamnya
-        $satkers = Satker::withCount('users')->get();
+        // Mengambil data Satker beserta total user dan daftar kabkot di dalamnya
+        $satkers = Satker::withCount('users')->with('kabkots')->get();
 
         $title = 'Daftar Satuan Kerja - SAPA MS ACEH';
 
@@ -105,11 +106,26 @@ class SystemController extends Controller
             'title'       => 'Manajemen Data Satuan Kerja | SAPA MS ACEH',
             'description' => 'Pengelolaan data master Satuan Kerja (Satker) Mahkamah Syar\'iyah se-Wilayah Hukum Aceh beserta jumlah pengguna terdaftar.',
             'keywords'    => 'manajemen satker, daftar satuan kerja, master data satker, admin sapa ms',
-            'robots'      => 'noindex, nofollow', // Halaman pengelolaan internal, wajib noindex demi privasi & keamanan
+            'robots'      => 'noindex, nofollow',
             'author'      => 'Mahkamah Syar\'iyah Aceh',
         ];
 
         return view('Pages.Pengguna.satker', compact('title', 'satkers', 'seo'));
+    }
+
+    public function storeKabkot(Request $request)
+    {
+        $request->validate([
+            'satker_id'   => 'required|exists:satkers,id',
+            'nama_kabkot' => 'required|string|max:255',
+        ]);
+
+        Kabkot::create([
+            'satker_id'   => $request->satker_id,
+            'nama_kabkot' => $request->nama_kabkot,
+        ]);
+
+        return redirect()->back()->with('success', 'Kabupaten/Kota berhasil ditambahkan!');
     }
 
     public function admin(Request $request)

@@ -78,6 +78,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/menu/{id}', [SystemController::class, 'destroyMenu'])->name('system.menu.destroy');
         Route::post('/access/toggle-menu', [SystemController::class, 'toggleMenuAccess'])->name('system.access.toggle-menu');
         Route::post('/access/toggle-submenu', [SystemController::class, 'toggleSubmenuAccess'])->name('system.access.toggle-submenu');
+
+        // Route Kabkot dimasukkan ke dalam grup system
+        Route::post('/kabkot/store', [SystemController::class, 'storeKabkot'])->name('kabkot.store');
     });
 
     // Action PTSP
