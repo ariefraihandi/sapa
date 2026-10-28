@@ -111,13 +111,36 @@
                 </div>
                 <div class="card-body p-3">
                     @forelse($recentPengunjung as $p)
+                        @php
+                            switch ($p->jenis_layanan) {
+                                case 'tatap_muka':
+                                    $iconClass = 'fa-solid fa-users';
+                                    $bgClass   = 'bg-warning text-dark';
+                                    break;
+                                case 'pesan':
+                                    $iconClass = 'fa-brands fa-whatsapp';
+                                    $bgClass   = 'bg-success text-white';
+                                    break;
+                                case 'telepon':
+                                    $iconClass = 'fa-solid fa-phone';
+                                    $bgClass   = 'bg-primary text-white';
+                                    break;
+                                default:
+                                    $iconClass = 'fa-solid fa-circle-info';
+                                    $bgClass   = 'bg-secondary text-white';
+                                    break;
+                            }
+                        @endphp
+
                         <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
-                            <div class="p-2 rounded-circle me-3 {{ $p->jenis_layanan == 'pesan' ? 'bg-success text-white' : 'bg-primary text-white' }}">
-                                <i class="{{ $p->jenis_layanan == 'pesan' ? 'fa-brands fa-whatsapp' : 'fa-solid fa-phone' }}"></i>
+                            <div class="p-2 rounded-circle me-3 {{ $bgClass }}">
+                                <i class="{{ $iconClass }}"></i>
                             </div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold text-dark small">{{ $p->nama_responden }}</h6>
-                                <span class="text-muted d-block" style="font-size: 0.75rem;">{{ $p->satker->satker_short_name ?? 'MS Aceh' }} • {{ $p->created_at->diffForHumans() }}</span>
+                                <span class="text-muted d-block" style="font-size: 0.75rem;">
+                                    {{ $p->satker->satker_short_name ?? 'MS Aceh' }} • {{ $p->created_at->diffForHumans() }}
+                                </span>
                             </div>
                             <span class="badge {{ $p->is_tindak_lanjut ? 'bg-success' : 'bg-danger' }}" style="font-size: 0.65rem;">
                                 {{ $p->is_tindak_lanjut ? 'Responded' : 'Pending' }}
