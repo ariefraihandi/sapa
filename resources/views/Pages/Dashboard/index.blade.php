@@ -330,12 +330,12 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     new ApexCharts(document.querySelector("#chartAnalytics"), optionsAnalytics).render();
 
-    // 2. PIE LAYANAN
+    // 2. PIE LAYANAN (Metode Kontak Layanan)
     var optionsPie = {
-        series: [{{ $layananPesan }}, {{ $layananTelepon }}],
-        chart: { type: 'donut', height: 200 },
-        labels: ['WhatsApp Pesan', 'Telepon Direct'],
-        colors: ['#10b981', '#3b82f6'],
+        series: [{{ $layananPesan }}, {{ $layananTelepon }}, {{ $layananTatapMuka }}],
+        chart: { type: 'donut', height: 230 },
+        labels: ['WhatsApp Pesan', 'Telepon Direct', 'Tatap Muka / Fisik'],
+        colors: ['#10b981', '#3b82f6', '#f59e0b'],
         legend: { position: 'bottom' }
     };
     new ApexCharts(document.querySelector("#chartLayananPie"), optionsPie).render();

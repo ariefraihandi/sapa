@@ -67,9 +67,10 @@ class DashboardController extends Controller
             $dataPengaduanPerBulan[]  = $pengaduanPerBulanRaw[$i] ?? 0;
         }
 
-        // Statistik Layanan (Pesan vs Telepon)
-        $layananPesan   = (clone $pengunjungQuery)->where('jenis_layanan', 'pesan')->count();
-        $layananTelepon = (clone $pengunjungQuery)->where('jenis_layanan', 'telepon')->count();
+        // Statistik Layanan (Pesan vs Telepon vs Tatap Muka)
+        $layananPesan     = (clone $pengunjungQuery)->where('jenis_layanan', 'pesan')->count();
+        $layananTelepon   = (clone $pengunjungQuery)->where('jenis_layanan', 'telepon')->count();
+        $layananTatapMuka = (clone $pengunjungQuery)->where('jenis_layanan', 'tatap_muka')->count();
 
         // ================= 3. REKAP DATA PER SATKER =================
         $satkerListQuery = Satker::orderBy('satker_name', 'asc');
@@ -122,16 +123,16 @@ class DashboardController extends Controller
             }
 
             return (object) [
-                'satker_id'                => $satker->id,
-                'satker_name'              => $satker->satker_name,
-                'satker_short_name'        => $satker->satker_short_name ?? $satker->satker_name,
-                'satker_vshort'            => $satker->satker_vshort,
-                'pengunjung_fisik'         => $pengunjungFisik,
-                'pengguna_sapa'            => $penggunaSapa,
-                'total_interaksi'          => $pengunjungFisik + $penggunaSapa,
-                'total_jenis_perkara_aktif' => $totalJenisPerkaraAktif,
-                'total_jenis_perkara_master'=> $totalJenisPerkaraMaster,
-                'jenis_perkara_aktif_list' => $jenisPerkaraAktifList,
+                'satker_id'                 => $satker->id,
+                'satker_name'               => $satker->satker_name,
+                'satker_short_name'         => $satker->satker_short_name ?? $satker->satker_name,
+                'satker_vshort'             => $satker->satker_vshort,
+                'pengunjung_fisik'          => $pengunjungFisik,
+                'pengguna_sapa'             => $penggunaSapa,
+                'total_interaksi'           => $pengunjungFisik + $penggunaSapa,
+                'total_jenis_perkara_aktif'  => $totalJenisPerkaraAktif,
+                'total_jenis_perkara_master' => $totalJenisPerkaraMaster,
+                'jenis_perkara_aktif_list'  => $jenisPerkaraAktifList,
             ];
         });
 
@@ -164,6 +165,7 @@ class DashboardController extends Controller
             'dataPengaduanPerBulan',
             'layananPesan',
             'layananTelepon',
+            'layananTatapMuka',
             'recentPengunjung',
             'rekapSatker',
             'categoriesSatker',
