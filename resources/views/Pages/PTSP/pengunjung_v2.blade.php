@@ -493,7 +493,7 @@
                                 <label class="form-label fw-bold">Pilih Satker</label>
                                 <select name="satker_id" id="satker_id" class="form-select" required>
                                     <option value="all" selected>-- Seluruh Satker (MS Aceh & Satker Daerah) --</option>
-                                    @foreach($satkers as $stk)
+                                    @foreach($satkers as$stk)
                                         <option value="{{ $stk->id }}">{{ $stk->satker_name }}</option>
                                     @endforeach
                                 </select>
@@ -514,15 +514,10 @@
                             <label class="form-label fw-bold">Pilih Bulan</label>
                             <select name="bulan" id="bulan" class="form-select">
                                 @php
-                                    $daftarBulan = [
-                                        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-                                        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-                                        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-                                    ];
-                                    $currentMonth = date('n');
+                                    $daftarBulan = [ 1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember' ];$currentMonth = date('n');
                                 @endphp
-                                @foreach($daftarBulan as $key => $namaBulan)
-                                    <option value="{{ $key }}" {{ $currentMonth == $key ? 'selected' : '' }}>
+                                @foreach($daftarBulan as $key =>$namaBulan)
+                                    <option value="{{ $key }}" {{ $currentMonth ==$key ? 'selected' : '' }}>
                                         {{ $namaBulan }}
                                     </option>
                                 @endforeach
@@ -546,16 +541,35 @@
                             <select name="tahun" id="tahun" class="form-select" required>
                                 @php
                                     $tahunSekarang = (int) date('Y');
-                                    $startTahun = $tahunSekarang - 5;
-                                    $endTahun = $tahunSekarang + 5;
+                                    $startTahun =$tahunSekarang - 5;
+                                    $endTahun =$tahunSekarang + 5;
                                 @endphp
                                 @for($t = $startTahun; $t <= $endTahun; $t++)
-                                    <option value="{{ $t }}" {{ $t == $tahunSekarang ? 'selected' : '' }}>
+                                    <option value="{{ $t }}" {{ $t ==$tahunSekarang ? 'selected' : '' }}>
                                         {{ $t }}
                                     </option>
                                 @endfor
                             </select>
                         </div>
+
+                        <!-- Option Samarkan Data Sensitif -->
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="samarkan_detail" value="1" id="samarkan_detail">
+                            <label class="form-check-label text-danger fw-bold" for="samarkan_detail">
+                                <i class="fas fa-user-shield me-1"></i> Samarkan Detail Pengunjung (NIK, No.HP, Email, Nama)
+                            </label>
+                        </div>
+
+                        @if($isMsAceh)
+                            <!-- Option Kecualikan MS Aceh -->
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="exclude_ms_aceh" value="1" id="exclude_ms_aceh">
+                                <label class="form-check-label text-primary fw-bold" for="exclude_ms_aceh">
+                                    <i class="fas fa-filter me-1"></i> Kecualikan MS Aceh (Hanya Satker Daerah)
+                                </label>
+                            </div>
+                        @endif
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>

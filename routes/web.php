@@ -9,6 +9,7 @@ use App\Http\Controllers\SyaratPerkaraController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\BotDashboardController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\AtkController; // <-- TAMBAHKAN IMPORT ATKCONTROLLER
 use App\Http\Middleware\CheckMenuAccess;
 
 Route::post('/ptsp/pengunjung/download-pdf', [SyaratPerkaraController::class, 'downloadPengunjungPdf'])
@@ -79,7 +80,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/access/toggle-menu', [SystemController::class, 'toggleMenuAccess'])->name('system.access.toggle-menu');
         Route::post('/access/toggle-submenu', [SystemController::class, 'toggleSubmenuAccess'])->name('system.access.toggle-submenu');
 
-        // Route Kabkot dimasukkan ke dalam grup system
         Route::post('/kabkot/store', [SystemController::class, 'storeKabkot'])->name('kabkot.store');
     });
 
@@ -93,7 +93,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/syarat-perkara/toggle-status', [SyaratPerkaraController::class, 'toggleStatus'])->name('ptsp.syarat-perkara.toggle-status');
         
         // Handling Pengunjung
-        Route::post('/pengunjung/store-offline', [SyaratPerkaraController::class, 'storePengunjungOffline'])->name('ptsp.pengunjung.store-offline'); // <-- TAMBAHKAN KODE INI
+        Route::post('/pengunjung/store-offline', [SyaratPerkaraController::class, 'storePengunjungOffline'])->name('ptsp.pengunjung.store-offline');
         Route::put('/pengunjung/{id}', [SyaratPerkaraController::class, 'updatePengunjung'])->name('ptsp.pengunjung.update');
         Route::put('/pengunjung/{id}/disposisi', [SyaratPerkaraController::class, 'disposisiPengunjung'])->name('ptsp.pengunjung.disposisi');
         Route::delete('/pengunjung/{id}', [SyaratPerkaraController::class, 'destroyPengunjung'])->name('ptsp.pengunjung.destroy');
@@ -109,12 +109,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pengaduan/{id}/tindak-lanjut', [SyaratPerkaraController::class, 'toggleTindakLanjutPengaduan'])->name('ptsp.pengaduan.tindak-lanjut');
     });
 
-    // Action Bot Dashboard (Proses Form / Store / Update / Delete)
+    // Action Bot Dashboard
     Route::prefix('bot')->group(function () {
         Route::put('/sapaan/{id}', [BotDashboardController::class, 'sapaanUpdate'])->name('bot.sapaan.update');
         Route::post('/faqs', [BotDashboardController::class, 'faqsStore'])->name('bot.faqs.store');
         Route::put('/faqs/{id}', [BotDashboardController::class, 'faqsUpdate'])->name('bot.faqs.update');
         Route::delete('/faqs/{id}', [BotDashboardController::class, 'faqsDestroy'])->name('bot.faqs.destroy');
+    });
+
+    // Action ATK (Proses Form / Store / Update / Delete) <-- TAMBAHKAN GRUP INI
+    Route::prefix('atk')->group(function () {
+        Route::post('/item/store', [AtkController::class, 'storeItem'])->name('atk.item.store');
+        Route::delete('/item/{id}', [AtkController::class, 'destroyItem'])->name('atk.item.destroy');
+        Route::post('/transaksi/keluar', [AtkController::class, 'storeKeluar'])->name('atk.transaksi.keluar');
+        Route::post('/rencana-belanja/store', [AtkController::class, 'storeRencanaBelanja'])->name('atk.rencana-belanja.store');
+        Route::post('/rencana-belanja/{id}/complete', [AtkController::class, 'completeRencanaBelanja'])->name('atk.rencana-belanja.complete');
     });
 
 
@@ -154,6 +163,14 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/sapaan', [BotDashboardController::class, 'sapaan'])->name('bot.sapaan');
             Route::get('/faqs', [BotDashboardController::class, 'faqs'])->name('bot.faqs');
             Route::get('/users', [BotDashboardController::class, 'users'])->name('bot.users');
+        });
+
+        // ATK Views (URL persis seperti URL submenu di Seeder) <-- TAMBAHKAN GRUP INI
+        Route::prefix('atk')->group(function () {
+            Route::get('/dashboard', [AtkController::class, 'dashboard'])->name('atk.dashboard');
+            Route::get('/master-barang', [AtkController::class, 'masterBarang'])->name('atk.master-barang');
+            Route::get('/transaksi', [AtkController::class, 'transaksi'])->name('atk.transaksi');
+            Route::get('/laporan', [AtkController::class, 'laporan'])->name('atk.laporan');
         });
 
     });

@@ -412,11 +412,13 @@ class SyaratPerkaraController extends Controller
     public function downloadPengunjungPdf(Request $request)
     {
         $request->validate([
-            'tipe_periode' => 'required|in:bulanan,triwulan',
-            'tahun'        => 'required|numeric',
-            'bulan'        => 'nullable|required_if:tipe_periode,bulanan|numeric|between:1,12',
-            'triwulan'     => 'nullable|required_if:tipe_periode,triwulan|in:1,2,3,4',
-            'satker_id'    => 'nullable|string',
+            'tipe_periode'    => 'required|in:bulanan,triwulan',
+            'tahun'           => 'required|numeric',
+            'bulan'           => 'nullable|required_if:tipe_periode,bulanan|numeric|between:1,12',
+            'triwulan'        => 'nullable|required_if:tipe_periode,triwulan|in:1,2,3,4',
+            'satker_id'       => 'nullable|string',
+            'samarkan_detail' => 'nullable|boolean',
+            'exclude_ms_aceh' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
@@ -427,26 +429,40 @@ class SyaratPerkaraController extends Controller
             strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
         ));
 
-        $tipePeriode = $request->tipe_periode;
-        $tahun       = $request->tahun;
-        $bulan       = $request->bulan;
-        $triwulan    = $request->triwulan;
+        $tipePeriode      = $request->tipe_periode;
+        $tahun            = $request->tahun;
+        $bulan            = $request->bulan;
+        $triwulan         = $request->triwulan;
         $selectedSatkerId = $request->satker_id;
+        $samarkan         = $request->has('samarkan_detail') && $request->samarkan_detail == '1';
+        $excludeMsAceh    = $isMsAceh && $request->has('exclude_ms_aceh') && $request->exclude_ms_aceh == '1';
 
-        // Filter Query Data Pengunjung
-        $query = PengunjungPtsp::with(['satker', 'satkerTujuan'])
-            ->whereYear('created_at', $tahun);
+        // Ambil Satker MS Aceh untuk Exclude jika dibutuhkan
+        $msAcehSatker = Satker::where('satker_vshort', 'ms-aceh')
+            ->orWhere('satker_short_name', 'MS ACEH')->first();
+
+        // Base Query Pengunjung
+        $query = PengunjungPtsp::with(['satker'])->whereYear('created_at', $tahun);
 
         $isAllSatker = false;
 
         if ($isMsAceh) {
-            if ($selectedSatkerId && $selectedSatkerId !== 'all') {
-                $query->where('satker_id', $selectedSatkerId);
-                $targetSatker = Satker::find($selectedSatkerId);
-                $namaSatker = $targetSatker ? $targetSatker->satker_name : 'Mahkamah Syar\'iyah';
-            } else {
+            if ($excludeMsAceh) {
+                // Kecualikan Data MS Aceh
+                if ($msAcehSatker) {
+                    $query->where('satker_id', '!=', $msAcehSatker->id);
+                }
                 $isAllSatker = true;
-                $namaSatker = 'SELURUH MAHKAMAH SYAR\'IYAH SE-ACEH';
+                $namaSatker = 'MAHKAMAH SYAR\'IYAH SE-ACEH (TANPA MS ACEH)';
+            } else {
+                if ($selectedSatkerId && $selectedSatkerId !== 'all') {
+                    $query->where('satker_id', $selectedSatkerId);
+                    $targetSatker = Satker::find($selectedSatkerId);
+                    $namaSatker = $targetSatker ? $targetSatker->satker_name : 'Mahkamah Syar\'iyah';
+                } else {
+                    $isAllSatker = true;
+                    $namaSatker = 'SELURUH MAHKAMAH SYAR\'IYAH SE-ACEH';
+                }
             }
         } else {
             if ($userSatker) {
@@ -455,7 +471,7 @@ class SyaratPerkaraController extends Controller
             $namaSatker = $userSatker ? $userSatker->satker_name : 'Mahkamah Syar\'iyah';
         }
 
-        // Filter Periode Waktu
+        // Filter Periode
         if ($tipePeriode === 'bulanan') {
             $query->whereMonth('created_at', $bulan);
             $periodeLabel = Carbon::createFromDate($tahun, $bulan, 1)->translatedFormat('F Y');
@@ -467,64 +483,125 @@ class SyaratPerkaraController extends Controller
                 4 => [10, 11, 12],
             ];
             $months = $triwulanMonths[(int)$triwulan] ?? [1, 2, 3];
-
             $query->whereIn(\DB::raw('MONTH(created_at)'), $months);
             $periodeLabel = "Triwulan {$triwulan} Tahun {$tahun}";
         }
 
         $allPengunjung = $query->orderBy('created_at', 'asc')->get();
 
-        // Mapping Penandatangan (PJ PTSP) & Kota
-        if ($isAllSatker || $isMsAceh) {
-            // Ambil Penanggung Jawab dari MS Aceh
-            $msAcehSatker = Satker::where('satker_vshort', 'ms-aceh')
-                ->orWhere('satker_short_name', 'MS ACEH')
-                ->first();
-            
-            $ptspDaerah = $msAcehSatker ? \App\Models\PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
-            $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
-            $namaKota = 'Banda Aceh';
-        } else {
-            // Ambil Penanggung Jawab dari Satker Terkait
-            $targetSatkerId = ($selectedSatkerId && $selectedSatkerId !== 'all') ? $selectedSatkerId : ($userSatker ? $userSatker->id : null);
-            $ptspDaerah = $targetSatkerId ? \App\Models\PtspDaerah::where('satker_id', $targetSatkerId)->first() : null;
-            $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
+        // Helper Sensor Text
+        $maskText = function ($text, $visibleChars = 2) {
+            if (empty($text)) return '-';
+            $len = strlen($text);
+            if ($len <= $visibleChars) return str_repeat('*', $len);
+            return substr($text, 0, $visibleChars) . str_repeat('*', max(1, $len - $visibleChars));
+        };
 
-            $namaKota = 'Banda Aceh';
-            if ($targetSatkerId) {
-                $kabkot = \App\Models\Kabkot::where('satker_id', $targetSatkerId)->first();
-                if ($kabkot && $kabkot->nama_kabkot) {
-                    $namaKota = $kabkot->nama_kabkot;
-                }
+        // Helper Format Durasi
+        $formatDurasiText = function ($seconds) {
+            if (!$seconds || $seconds <= 0) return '-';
+            if ($seconds < 60) return $seconds . 'd';
+            $minutes = floor($seconds / 60);
+            $sec = $seconds % 60;
+            if ($minutes < 60) return $minutes . 'm ' . ($sec > 0 ? $sec . 'd' : '');
+            $hours = floor($minutes / 60);
+            $min = $minutes % 60;
+            if ($hours < 24) return $hours . 'j ' . ($min > 0 ? $min . 'm' : '');
+            $days = floor($hours / 24);
+            $hr = $hours % 24;
+            return $days . 'h ' . ($hr > 0 ? $hr . 'j' : '');
+        };
+
+        // Transform Data Pengunjung
+        $allPengunjung->transform(function ($item) use ($samarkan, $maskText, $formatDurasiText) {
+            $item->formatted_durasi_item = $item->is_tindak_lanjut ? $formatDurasiText($item->durasi_tindak_lanjut) : '-';
+
+            if ($samarkan) {
+                $item->nama_responden = $maskText($item->nama_responden, 2);
+                $item->nik            = $maskText($item->nik, 4);
+                $item->no_hp          = $maskText($item->no_hp, 4);
+                $item->email          = !empty($item->email) ? $maskText(explode('@', $item->email)[0], 2) . '@***.com' : '-';
             }
+            return $item;
+        });
+
+        // Total Ringkasan Global
+        $totalFisik = $allPengunjung->where('jenis_layanan', 'tatap_muka')->count();
+        $totalSapa  = $allPengunjung->where('jenis_layanan', '!=', 'tatap_muka')->count();
+
+        // Rata-rata Durasi Global
+        $dataSelesai = $allPengunjung->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
+        $avgDetik    = $dataSelesai->avg('durasi_tindak_lanjut') ?? 0;
+        $avgDurasiFormatted = $formatDurasiText(round($avgDetik));
+
+        // DEMOGRAFI GLOBAL 1 KALI (GABUNGAN SELURUH SATKER YANG TERPILIH)
+        $statPekerjaan = $allPengunjung->groupBy(fn($i) => $i->pekerjaan ?? 'Lainnya')
+            ->map->count()->sortDesc();
+
+        $statUsia = [
+            '< 20 Tahun'    => $allPengunjung->filter(fn($i) => (int)$i->usia < 20 && !empty($i->usia))->count(),
+            '20 - 39 Tahun' => $allPengunjung->filter(fn($i) => (int)$i->usia >= 20 && (int)$i->usia <= 39)->count(),
+            '40 - 59 Tahun' => $allPengunjung->filter(fn($i) => (int)$i->usia >= 40 && (int)$i->usia <= 59)->count(),
+            '≥ 60 Tahun'    => $allPengunjung->filter(fn($i) => (int)$i->usia >= 60)->count(),
+        ];
+
+        // ANALISIS DAERAH / KABUPATEN KOTA TERBANYAK
+        // Mengambil data Kabkot melalui relasi Satker
+        $kabkotsMap = \App\Models\Kabkot::pluck('nama_kabkot', 'satker_id')->toArray();
+        
+        $statKabkot = $allPengunjung->groupBy(function($item) use ($kabkotsMap) {
+            return $kabkotsMap[$item->satker_id] ?? 'Lainnya / Luar Wilayah';
+        })->map->count()->sortDesc();
+
+        // Grouping & Sorting per-Satker
+        $rankingSatker = [];
+        $groupedPengunjung = $allPengunjung->groupBy(fn($item) => $item->satker->satker_name ?? 'Lainnya');
+
+        foreach ($groupedPengunjung as $stkName => $items) {
+            $fisikCount = $items->where('jenis_layanan', 'tatap_muka')->count();
+            $sapaCount  = $items->where('jenis_layanan', '!=', 'tatap_muka')->count();
+
+            $stkSelesai  = $items->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
+            $stkAvgDetik = $stkSelesai->avg('durasi_tindak_lanjut') ?? 0;
+
+            // Tatap Muka di Atas, SAPA di Bawah
+            $sortedItems = $items->sortBy(fn($item) => $item->jenis_layanan === 'tatap_muka' ? 0 : 1)->values();
+
+            $rankingSatker[] = [
+                'satker_name' => $stkName,
+                'total'       => $items->count(),
+                'tatap_muka'  => $fisikCount,
+                'sapa'        => $sapaCount,
+                'avg_detik'   => $stkAvgDetik,
+                'avg_durasi'  => $formatDurasiText(round($stkAvgDetik)),
+                'items'       => $sortedItems
+            ];
         }
 
-        // Pemisahan Data & Grouping per-Satker jika Seluruh Satker
-        if ($isAllSatker) {
-            $groupedPengunjung = $allPengunjung->groupBy(function($item) {
-                return $item->satker->satker_name ?? 'Lainnya';
-            });
+        // Urutkan Waktu Tercepat
+        usort($rankingSatker, fn($a, $b) => $a['avg_detik'] <=> $b['avg_detik']);
 
-            $pengunjungFisik = null;
-            $penggunaSapa = null;
-        } else {
-            $groupedPengunjung = null;
-            $pengunjungFisik = $allPengunjung->filter(fn($item) => $item->jenis_layanan === 'tatap_muka');
-            $penggunaSapa = $allPengunjung->filter(fn($item) => $item->jenis_layanan !== 'tatap_muka');
-        }
+        // Tanda Tangan & Kota
+        $ptspDaerah = $msAcehSatker ? \App\Models\PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
+        $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
+        $namaKota = 'Banda Aceh';
 
-        // Render View PDF
         $pdf = PDF::loadView('Pages.PTSP.pdf_report_pengunjung', [
-            'isAllSatker'       => $isAllSatker,
-            'groupedPengunjung' => $groupedPengunjung,
-            'pengunjungFisik'   => $pengunjungFisik,
-            'penggunaSapa'      => $penggunaSapa,
-            'totalKeseluruhan'  => $allPengunjung->count(),
-            'satker'            => $userSatker,
-            'namaSatker'        => $namaSatker,
-            'periodeLabel'      => $periodeLabel,
-            'namaPj'            => $namaPj,
-            'namaKota'          => $namaKota
+            'isAllSatker'        => $isAllSatker,
+            'rankingSatker'      => $rankingSatker,
+            'totalKeseluruhan'   => $allPengunjung->count(),
+            'totalFisik'         => $totalFisik,
+            'totalSapa'          => $totalSapa,
+            'avgDurasiFormatted' => $avgDurasiFormatted,
+            'statPekerjaan'      => $statPekerjaan,
+            'statUsia'           => $statUsia,
+            'statKabkot'         => $statKabkot,
+            'namaSatker'         => $namaSatker,
+            'periodeLabel'       => $periodeLabel,
+            'namaPj'             => $namaPj,
+            'namaKota'           => $namaKota,
+            'samarkan'           => $samarkan,
+            'excludeMsAceh'      => $excludeMsAceh
         ], [], [
             'format'        => 'A4',
             'orientation'   => 'L',
@@ -535,7 +612,6 @@ class SyaratPerkaraController extends Controller
         ]);
 
         $filename = 'Laporan_Pengunjung_PTSP_' . Str::slug($namaSatker) . '_' . Str::slug($periodeLabel) . '.pdf';
-
         return $pdf->stream($filename);
     }
 
