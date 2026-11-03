@@ -77,9 +77,11 @@ class SyaratPerkaraController extends Controller
             $type = $request->input('type'); // 'ms_aceh' atau 'daerah'
             
             // Eager load relasi satker, satkerTujuan, dan ptspDaerah milik satkerTujuan
+            // 🚨 URUTKAN: Belum ditindaklanjuti lebih dulu (0 -> 1), lalu created_at DESC
             $query = PengunjungPtsp::with(['satker', 'satkerTujuan.ptspDaerah'])
                 ->select('pengunjung_ptsp.*')
-                ->latest('created_at');
+                ->orderBy('is_tindak_lanjut', 'asc')
+                ->orderBy('created_at', 'desc');
 
             if ($isMsAceh) {
                 if ($type === 'ms_aceh') {
@@ -177,16 +179,13 @@ class SyaratPerkaraController extends Controller
                         $satkerHtml = '<div class="mb-1"><span class="badge bg-light text-dark border"><i class="fa-solid fa-building me-1 text-success"></i>' . e($satkerAwal) . '</span></div>';
                     }
 
-                    // Hanya kembalikan Satker & Badge Layanan tanpa keperluan
                     return $satkerHtml . '<div><span class="badge ' . $badgeClass . ' border"><i class="' . $iconClass . '"></i>' . e($layanan) . '</span></div>';
                 })
                 ->addColumn('keperluan', function ($row) use ($allJenisPerkara) {
                     if (Str::isUuid($row->keperluan) && isset($allJenisPerkara[$row->keperluan])) {
                         $namaLayanan = $allJenisPerkara[$row->keperluan]->nama_layanan;
-                        
-                        return 'Informasi Syarat ' . $namaLayanan . '';
+                        return 'Informasi Syarat ' . $namaLayanan;
                     }
-
                     return $row->keperluan ?: '-';
                 })
                 ->addColumn('kontak_wa_html', function ($row) use ($allJenisPerkara) {
@@ -199,7 +198,6 @@ class SyaratPerkaraController extends Controller
 
                     $panggilan = ($row->jenis_kelamin === 'L') ? 'Bapak' : 'Ibu';
                     
-                    // Tentukan Satker acuan (Satker Tujuan jika ada, jika tidak pakai Satker Asal)
                     $satkerTarget = ($row->satker_tujuan_id && $row->satkerTujuan) ? $row->satkerTujuan : $row->satker;
                     $satkerTargetName = $satkerTarget->satker_name ?? 'Mahkamah Syar\'iyah';
                     $satkerAwalName = $row->satker->satker_name ?? 'Mahkamah Syar\'iyah';
@@ -211,7 +209,6 @@ class SyaratPerkaraController extends Controller
                         $jenisPerkaraModel = $allJenisPerkara[$row->keperluan];
                         $namaPerkara = $jenisPerkaraModel->nama_layanan;
 
-                        // Generate link publik persyaratan perkara
                         $urlPersyaratan = route('public.persyaratan-perkara.single', [
                             'satker_vshort'    => $satkerTarget->satker_vshort,
                             'jenis_perkara_id' => $jenisPerkaraModel->id,
@@ -225,7 +222,6 @@ class SyaratPerkaraController extends Controller
 
                         $btnLabel = '<i class="fa-brands fa-whatsapp me-1"></i>Kirim Persyaratan';
                         $btnClass = 'btn-success';
-
                     } else {
                         $keperluanText = $row->keperluan ?: 'Layanan Informasi PTSP';
                         $isDisposisi = ($row->satker_tujuan_id && $row->satker_tujuan_id !== $row->satker_id);
@@ -251,36 +247,49 @@ class SyaratPerkaraController extends Controller
 
                     $waUrl = "https://wa.me/" . $phone . "?text=" . urlencode($pesanPemohon);
 
-                    // 💡 LOGIKA DUA TOMBOL KHUSUS TATAP MUKA & ONLINE
+                    // 💡 LOGIKA DUA TOMBOL KHUSUS TATAP MUKA & ONLINE (WITH 1 MINUTE COUNTDOWN)
                     $extraButtonHtml = '';
 
                     if ($layananRaw === 'tatap_muka') {
                         if (!$row->is_tindak_lanjut) {
-                            // Jika belum ditindaklanjuti -> Tombol Merah "Selesai Melayani" di atas
-                            $extraButtonHtml = '
-                                <button type="button" 
-                                    id="btn-selesai-' . $row->id . '" 
-                                    onclick="selesaiMelayaniFisik(\'' . $row->id . '\')" 
-                                    class="btn btn-sm btn-danger fw-bold px-2 py-1" style="font-size: 11px;">
-                                    <i class="fa-solid fa-clock me-1"></i>Selesai Melayani
-                                </button>';
+                            // Hitung selisih detik dari created_at sampai sekarang
+                            $createdTime = $row->created_at ? $row->created_at->timestamp : time();
+                            $now = time();
+                            $elapsedSeconds = $now - $createdTime;
+                            $remainingSeconds = max(0, 60 - $elapsedSeconds); // Minimal 60 detik (1 menit)
+
+                            if ($remainingSeconds > 0) {
+                                // Masih countdown -> Disabled button
+                                $extraButtonHtml = '
+                                    <button type="button" 
+                                        id="btn-selesai-' . $row->id . '" 
+                                        data-created="' . $createdTime . '" 
+                                        class="btn btn-sm btn-secondary fw-bold px-2 py-1 btn-countdown" 
+                                        disabled style="font-size: 11px;">
+                                        <i class="fa-solid fa-hourglass-half me-1"></i>Tunggu (' . $remainingSeconds . 's)
+                                    </button>';
+                            } else {
+                                // Sudah lewat 1 menit -> Aktifkan Tombol Merah "Selesai Melayani"
+                                $extraButtonHtml = '
+                                    <button type="button" 
+                                        id="btn-selesai-' . $row->id . '" 
+                                        onclick="selesaiMelayaniFisik(\'' . $row->id . '\')" 
+                                        class="btn btn-sm btn-danger fw-bold px-2 py-1" style="font-size: 11px;">
+                                        <i class="fa-solid fa-clock me-1"></i>Selesai Melayani
+                                    </button>';
+                            }
                         } else {
-                            // Jika SUDAH ditindaklanjuti -> Tampilkan indikator "Ditindaklanjuti" di atas
                             $extraButtonHtml = '
                                 <span class="btn btn-sm btn-outline-success fw-bold px-2 py-1 disabled" style="font-size: 11px;">
                                     <i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti
                                 </span>';
                         }
-                        
-                        // Tombol WA (Kirim Persyaratan / Hubungi Pemohon) tetap tampil dengan style hijau outline/solid
-                        $btnClass = 'btn-outline-success';
 
+                        $btnClass = 'btn-outline-success';
                     } elseif ($row->is_tindak_lanjut) {
-                        // Layanan selain tatap muka (pesan/telepon) yang sudah ditindaklanjuti
                         $btnClass = 'btn-outline-success';
                         $btnLabel = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
                     } else {
-                        // Layanan selain tatap muka yang belum ditindaklanjuti
                         $btnClass = 'btn-danger';
                     }
 
@@ -313,7 +322,6 @@ class SyaratPerkaraController extends Controller
                             $satkerAwalName = $row->satker->satker_name ?? 'Satker Asal';
                             $satkerTujuanName = $row->satkerTujuan->satker_name ?? 'Satker Tujuan';
 
-                            // Ambil nama layanan jika UUID
                             $keperluanText = $row->keperluan;
                             if (Str::isUuid($row->keperluan) && isset($allJenisPerkara[$row->keperluan])) {
                                 $keperluanText = $allJenisPerkara[$row->keperluan]->nama_layanan;
@@ -376,9 +384,7 @@ class SyaratPerkaraController extends Controller
                 ->make(true);
         }
 
-        // 💡 KALKULASI STATISTIK DENGAN FILTER SATKER DISPOSISI VS SATKER ASAL
         $stats = $this->calculatePtspStats($userSatker);
-
         $pengunjung     = PengunjungPtsp::with(['satker', 'satkerTujuan'])->latest('created_at')->get();
         $satkers        = Satker::orderBy('satker_name', 'asc')->get();
         $isSoundActive  = $notifPtsp ? (bool)$notifPtsp->is_pengunjung : false;
@@ -437,7 +443,7 @@ class SyaratPerkaraController extends Controller
         $samarkan         = $request->has('samarkan_detail') && $request->samarkan_detail == '1';
         $excludeMsAceh    = $isMsAceh && $request->has('exclude_ms_aceh') && $request->exclude_ms_aceh == '1';
 
-        // Ambil Satker MS Aceh untuk Exclude jika dibutuhkan
+        // Ambil Satker MS Aceh untuk filter exclude jika diperlukan
         $msAcehSatker = Satker::where('satker_vshort', 'ms-aceh')
             ->orWhere('satker_short_name', 'MS ACEH')->first();
 
@@ -448,12 +454,14 @@ class SyaratPerkaraController extends Controller
 
         if ($isMsAceh) {
             if ($excludeMsAceh) {
-                // Kecualikan Data MS Aceh
+                // Filter: Kecualikan Data MS Aceh dari Query Database
                 if ($msAcehSatker) {
                     $query->where('satker_id', '!=', $msAcehSatker->id);
                 }
                 $isAllSatker = true;
-                $namaSatker = 'MAHKAMAH SYAR\'IYAH SE-ACEH (TANPA MS ACEH)';
+
+                // 💡 Judul tetap bersih tanpa tulisan "(TANPA MS ACEH)"
+                $namaSatker = 'MAHKAMAH SYAR\'IYAH SE-ACEH';
             } else {
                 if ($selectedSatkerId && $selectedSatkerId !== 'all') {
                     $query->where('satker_id', $selectedSatkerId);
@@ -471,7 +479,7 @@ class SyaratPerkaraController extends Controller
             $namaSatker = $userSatker ? $userSatker->satker_name : 'Mahkamah Syar\'iyah';
         }
 
-        // Filter Periode
+        // Filter Berdasarkan Periode Waktu
         if ($tipePeriode === 'bulanan') {
             $query->whereMonth('created_at', $bulan);
             $periodeLabel = Carbon::createFromDate($tahun, $bulan, 1)->translatedFormat('F Y');
@@ -489,7 +497,7 @@ class SyaratPerkaraController extends Controller
 
         $allPengunjung = $query->orderBy('created_at', 'asc')->get();
 
-        // Helper Sensor Text
+        // Helper Sensor Teks Kontak/Identitas
         $maskText = function ($text, $visibleChars = 2) {
             if (empty($text)) return '-';
             $len = strlen($text);
@@ -497,7 +505,7 @@ class SyaratPerkaraController extends Controller
             return substr($text, 0, $visibleChars) . str_repeat('*', max(1, $len - $visibleChars));
         };
 
-        // Helper Format Durasi
+        // Helper Format Durasi Teks (Detik ke Jam/Menit)
         $formatDurasiText = function ($seconds) {
             if (!$seconds || $seconds <= 0) return '-';
             if ($seconds < 60) return $seconds . 'd';
@@ -512,10 +520,21 @@ class SyaratPerkaraController extends Controller
             return $days . 'h ' . ($hr > 0 ? $hr . 'j' : '');
         };
 
+        // Pre-fetch JenisPerkara untuk lookup nama layanan jika berupa UUID
+        $allJenisPerkara = \App\Models\JenisPerkara::all()->keyBy('id');
+
         // Transform Data Pengunjung
-        $allPengunjung->transform(function ($item) use ($samarkan, $maskText, $formatDurasiText) {
+        $allPengunjung->transform(function ($item) use ($samarkan, $maskText, $formatDurasiText, $allJenisPerkara) {
             $item->formatted_durasi_item = $item->is_tindak_lanjut ? $formatDurasiText($item->durasi_tindak_lanjut) : '-';
 
+            // Konversi UUID Jenis Perkara ke Nama Layanan Resmi
+            if (\Illuminate\Support\Str::isUuid($item->keperluan) && isset($allJenisPerkara[$item->keperluan])) {
+                $item->nama_keperluan = 'Informasi Syarat ' . $allJenisPerkara[$item->keperluan]->nama_layanan;
+            } else {
+                $item->nama_keperluan = $item->keperluan ?: '-';
+            }
+
+            // Sensor detail jika opsi samarkan di-centang
             if ($samarkan) {
                 $item->nama_responden = $maskText($item->nama_responden, 2);
                 $item->nik            = $maskText($item->nik, 4);
@@ -525,16 +544,20 @@ class SyaratPerkaraController extends Controller
             return $item;
         });
 
-        // Total Ringkasan Global
-        $totalFisik = $allPengunjung->where('jenis_layanan', 'tatap_muka')->count();
-        $totalSapa  = $allPengunjung->where('jenis_layanan', '!=', 'tatap_muka')->count();
+        // 💡 PEMISAHAN DATA UNTUK DIBACA BLADE PDF
+        $pengunjungFisik = $allPengunjung->where('jenis_layanan', 'tatap_muka')->values();
+        $penggunaSapa   = $allPengunjung->where('jenis_layanan', '!=', 'tatap_muka')->values();
 
-        // Rata-rata Durasi Global
+        // Ringkasan Total
+        $totalFisik = $pengunjungFisik->count();
+        $totalSapa  = $penggunaSapa->count();
+
+        // Hitung Rata-rata Durasi Global
         $dataSelesai = $allPengunjung->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
         $avgDetik    = $dataSelesai->avg('durasi_tindak_lanjut') ?? 0;
         $avgDurasiFormatted = $formatDurasiText(round($avgDetik));
 
-        // DEMOGRAFI GLOBAL 1 KALI (GABUNGAN SELURUH SATKER YANG TERPILIH)
+        // Statistik Demografi Global
         $statPekerjaan = $allPengunjung->groupBy(fn($i) => $i->pekerjaan ?? 'Lainnya')
             ->map->count()->sortDesc();
 
@@ -545,15 +568,13 @@ class SyaratPerkaraController extends Controller
             '≥ 60 Tahun'    => $allPengunjung->filter(fn($i) => (int)$i->usia >= 60)->count(),
         ];
 
-        // ANALISIS DAERAH / KABUPATEN KOTA TERBANYAK
-        // Mengambil data Kabkot melalui relasi Satker
         $kabkotsMap = \App\Models\Kabkot::pluck('nama_kabkot', 'satker_id')->toArray();
         
         $statKabkot = $allPengunjung->groupBy(function($item) use ($kabkotsMap) {
             return $kabkotsMap[$item->satker_id] ?? 'Lainnya / Luar Wilayah';
         })->map->count()->sortDesc();
 
-        // Grouping & Sorting per-Satker
+        // Grouping & Ranking per Satker
         $rankingSatker = [];
         $groupedPengunjung = $allPengunjung->groupBy(fn($item) => $item->satker->satker_name ?? 'Lainnya');
 
@@ -564,7 +585,6 @@ class SyaratPerkaraController extends Controller
             $stkSelesai  = $items->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
             $stkAvgDetik = $stkSelesai->avg('durasi_tindak_lanjut') ?? 0;
 
-            // Tatap Muka di Atas, SAPA di Bawah
             $sortedItems = $items->sortBy(fn($item) => $item->jenis_layanan === 'tatap_muka' ? 0 : 1)->values();
 
             $rankingSatker[] = [
@@ -578,16 +598,18 @@ class SyaratPerkaraController extends Controller
             ];
         }
 
-        // Urutkan Waktu Tercepat
         usort($rankingSatker, fn($a, $b) => $a['avg_detik'] <=> $b['avg_detik']);
 
-        // Tanda Tangan & Kota
+        // Konfigurasi Penanggung Jawab & Lokasi Tanda Tangan
         $ptspDaerah = $msAcehSatker ? \App\Models\PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
         $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
         $namaKota = 'Banda Aceh';
 
+        // Generate PDF via DomPDF / MPDF
         $pdf = PDF::loadView('Pages.PTSP.pdf_report_pengunjung', [
             'isAllSatker'        => $isAllSatker,
+            'pengunjungFisik'    => $pengunjungFisik,
+            'penggunaSapa'      => $penggunaSapa,
             'rankingSatker'      => $rankingSatker,
             'totalKeseluruhan'   => $allPengunjung->count(),
             'totalFisik'         => $totalFisik,

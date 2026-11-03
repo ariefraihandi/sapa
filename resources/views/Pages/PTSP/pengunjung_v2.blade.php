@@ -957,4 +957,31 @@
             }
         }
     </script>
+
+    <script>
+        // ⏱️ TIMER TIMER COUNTDOWN 1 MENIT UNTUK LAYANAN TATAP MUKA
+        setInterval(function () {
+            const nowSec = Math.floor(Date.now() / 1000);
+
+            document.querySelectorAll('.btn-countdown').forEach(function (btn) {
+                const createdSec = parseInt(btn.getAttribute('data-created'));
+                if (!createdSec) return;
+
+                const elapsed = nowSec - createdSec;
+                const remaining = 60 - elapsed;
+
+                if (remaining > 0) {
+                    btn.innerHTML = `<i class="fa-solid fa-hourglass-half me-1"></i>Tunggu (${remaining}s)`;
+                } else {
+                    // Begitu waktu habis (>= 1 menit), ubah button menjadi tombol Aktif "Selesai Melayani"
+                    const id = btn.id.replace('btn-selesai-', '');
+                    btn.className = 'btn btn-sm btn-danger fw-bold px-2 py-1';
+                    btn.removeAttribute('disabled');
+                    btn.removeAttribute('data-created');
+                    btn.setAttribute('onclick', `selesaiMelayaniFisik('${id}')`);
+                    btn.innerHTML = `<i class="fa-solid fa-clock me-1"></i>Selesai Melayani`;
+                }
+            });
+        }, 1000);
+    </script>
 @endpush
