@@ -600,8 +600,21 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
-    <!-- 1. SCRIPT FUNGSI DITINDAKLANJUTI (AJAX ACTION) -->
+    <!-- SCRIPT FUNGSI DITINDAKLANJUTI (AJAX ACTION) -->
     <script>
+        // Helper untuk reload DataTable yang aktif tanpa reset paginasi
+        function reloadActiveDataTables() {
+            if (window.tableMsAceh && typeof window.tableMsAceh.ajax !== 'undefined') {
+                window.tableMsAceh.ajax.reload(null, false);
+            }
+            if (window.tableDaerah && typeof window.tableDaerah.ajax !== 'undefined') {
+                window.tableDaerah.ajax.reload(null, false);
+            }
+            if (typeof table !== 'undefined' && table && typeof table.ajax !== 'undefined') {
+                table.ajax.reload(null, false);
+            }
+        }
+
         function markAsFollowedUp(id) {
             fetch(`/ptsp/pengunjung/${id}/tindak-lanjut`, {
                 method: 'POST',
@@ -613,12 +626,10 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const btn = document.getElementById(`btn-wa-${id}`);
-                    if (btn) {
-                        btn.className = 'btn btn-sm btn-outline-success fw-bold px-2 py-1';
-                        btn.style.fontSize = '11px';
-                        btn.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
-                    }
+                    // Reload DataTables agar baris & kolom durasi diperbarui otomatis
+                    reloadActiveDataTables();
+                } else {
+                    alert(data.message || 'Gagal memperbarui status.');
                 }
             })
             .catch(error => console.error('Error:', error));
@@ -630,14 +641,13 @@
                 text: 'Apakah pelayanan fisik untuk pengunjung ini sudah selesai?',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#dc3545', // Warna merah
+                confirmButtonColor: '#dc3545',
                 cancelButtonColor: '#6c757d',
                 confirmButtonText: '<i class="fa-solid fa-check me-1"></i>Ya, Selesai!',
                 cancelButtonText: 'Batal',
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Tampilkan loading saat proses fetch berlangsung
                     Swal.fire({
                         title: 'Memproses...',
                         text: 'Sedang menyimpan status pelayanan',
@@ -662,26 +672,9 @@
                     })
                     .then(data => {
                         if (data.success) {
-                            // Sembunyikan tombol merah "Selesai Melayani"
-                            const btnSelesai = document.getElementById(`btn-selesai-${id}`);
-                            if (btnSelesai) {
-                                btnSelesai.remove();
-                            }
+                            // Reload DataTables
+                            reloadActiveDataTables();
 
-                            // Ubah tombol WA menjadi status "Ditindaklanjuti"
-                            const btnWa = document.getElementById(`btn-wa-${id}`);
-                            if (btnWa) {
-                                btnWa.className = 'btn btn-sm btn-outline-success fw-bold px-2 py-1';
-                                btnWa.style.fontSize = '11px';
-                                btnWa.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>Ditindaklanjuti';
-                            }
-
-                            // Reload DataTables jika ada agar kolom durasi ter-update
-                            if (typeof table !== 'undefined') {
-                                table.ajax.reload(null, false);
-                            }
-
-                            // Tampilkan notifikasi sukses SweetAlert
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Berhasil!',

@@ -26,6 +26,13 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- Aksi & Header -->
     <div class="row mb-3">
         <div class="col-12">
@@ -77,7 +84,7 @@
                                         <td class="text-center fw-bold text-muted">{{ $item->stok_minimal }}</td>
                                         <td class="text-center">
                                             <button class="btn btn-sm btn-outline-warning me-1" title="Edit Barang"
-                                                onclick="editItem('{{ $item->id }}', '{{ addslashes($item->nama_barang) }}', '{{ $item->satuan }}', '{{ $item->stok_minimal }}')">
+                                                onclick="editItem('{{ $item->id }}', '{{ addslashes($item->nama_barang) }}', '{{ addslashes($item->satuan) }}', '{{ $item->stok_minimal }}')">
                                                 <i class="fa-solid fa-pen"></i>
                                             </button>
                                             <form action="{{ route('atk.item.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus barang {{ addslashes($item->nama_barang) }}?')">
@@ -111,7 +118,7 @@
                 <h5 class="modal-title text-white mb-0" id="modalItemTitle"><i class="fa-solid fa-box me-2"></i> Tambah Barang ATK</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('atk.item.store') }}" method="POST">
+            <form id="formItem" action="{{ route('atk.item.store') }}" method="POST">
                 @csrf
                 <input type="hidden" name="id" id="item_id">
                 <div class="modal-body p-4 text-dark">
@@ -155,6 +162,7 @@
         document.getElementById('item_satuan').value = satuan;
         document.getElementById('item_stok_minimal').value = stokMin;
         document.getElementById('modalItemTitle').innerHTML = '<i class="fa-solid fa-pen me-2"></i> Edit Barang ATK';
+        
         var modal = new bootstrap.Modal(document.getElementById('modalItem'));
         modal.show();
     }

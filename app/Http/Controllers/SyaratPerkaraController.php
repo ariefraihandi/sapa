@@ -723,9 +723,6 @@ class SyaratPerkaraController extends Controller
         ];
     }
 
-    /**
-     * 3. METHOD KHUSUS PEMANGGILAN STATISTIK VIA AJAX (MENGGUNAKAN FUNGSI KALKULASI YANG SAMA)
-     */
     public function getStatistikPtsp()
     {
         $user = Auth::user();
@@ -1382,8 +1379,15 @@ class SyaratPerkaraController extends Controller
         $item = PengunjungPtsp::findOrFail($id);
 
         // 2. Tentukan Satker yang berwenang
-        $isDisposisi = (!empty($item->satker_tujuan_id) && $item->satker_tujuan_id !== $item->satker_id);
-        $satkerBerwenangId = $isDisposisi ? $item->satker_tujuan_id : $item->satker_id;
+        // Jika layanan adalah 'tatap_muka', Wajib Satker Asal (satker_id)
+        // Jika layanan online/SAPA dan ada disposisi, gunakan satker_tujuan_id
+        if ($item->jenis_layanan === 'tatap_muka') {
+            $satkerBerwenangId = $item->satker_id;
+            $isDisposisi = false;
+        } else {
+            $isDisposisi = (!empty($item->satker_tujuan_id) && $item->satker_tujuan_id !== $item->satker_id);
+            $satkerBerwenangId = $isDisposisi ? $item->satker_tujuan_id : $item->satker_id;
+        }
 
         // 3. Cek apakah satker_id user yang login sesuai dengan Satker yang berwenang
         if ($user->satker_id !== $satkerBerwenangId) {
@@ -1397,8 +1401,7 @@ class SyaratPerkaraController extends Controller
         if (!$item->is_tindak_lanjut) {
             $waktuSelesai = Carbon::now();
             
-            // 💡 LOGIKA WAKTU MULAI: 
-            // Jika didisposisi, gunakan updated_at (waktu disposisi). Jika tidak, gunakan created_at.
+            // Logika Waktu Mulai: Jika didisposisi, gunakan updated_at. Jika tidak/tatap muka, gunakan created_at.
             $waktuMulai = $isDisposisi ? $item->updated_at : $item->created_at;
 
             // Hitung durasi jam kerja murni dari waktu mulai yang disesuaikan

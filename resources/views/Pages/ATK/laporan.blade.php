@@ -1,5 +1,26 @@
 @extends('Layouts.app')
 
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection {
+        min-height: 31px !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    /* Mencegah konflik pointer event kalender pada Webkit/Blink */
+    input[type="date"] {
+        position: relative;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <!-- Header / Breadcrumb -->
@@ -26,7 +47,100 @@
         </div>
     @endif
 
-    <!-- Section 1: Daftar Rencana Belanja (Pengadaan) -->
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    <!-- SECTION 1: FORM BUAT RENCANA BELANJA -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 px-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="card-title text-success font-weight-bold mb-0" style="color: #0b6e39 !important;">
+                        <i class="fa-solid fa-cart-plus me-1"></i> Buat Form Rencana Belanja ATK Baru
+                    </h6>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFormRencana" aria-expanded="true">
+                        <i class="fa-solid fa-chevron-down"></i> Buka/Tutup Form
+                    </button>
+                </div>
+                <div class="collapse show" id="collapseFormRencana">
+                    <div class="card-body p-4">
+                        <form action="{{ route('atk.rencana-belanja.store') }}" method="POST" id="formRencanaBelanja">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label fw-bold">Nama Kegiatan / Pengadaan <span class="text-danger">*</span></label>
+                                    <input type="text" name="nama_kegiatan" class="form-control form-control-sm" placeholder="Contoh: Pengadaan ATK Triwulan IV 2026" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Tanggal Rencana <span class="text-danger">*</span></label>
+                                    <input type="date" name="tanggal_rencana" class="form-control form-control-sm custom-date-picker" value="{{ date('Y-m-d') }}" required>
+                                </div>
+                            </div>
+
+                            <hr class="my-3 text-muted">
+
+                            <!-- Dynamic Items Table -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold mb-2">Pilih Barang yang Akan Dibeli <span class="text-danger">*</span></label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered align-middle" id="table-items-belanja">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th width="65%">Pilih Barang ATK</th>
+                                                <th width="25%">Jumlah Beli</th>
+                                                <th class="text-center" width="10%">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="wrapper-item-belanja">
+                                            <tr class="item-row">
+                                                <td>
+                                                    <select name="items[0][item_id]" class="form-select form-select-sm select2-item" required>
+                                                        <option value="">-- Cari / Pilih Barang --</option>
+                                                        @foreach($items as $barang)
+                                                            <option value="{{ $barang->id }}">{{ $barang->nama_barang }} ({{ $barang->satuan }}) - Stok: {{ $barang->stok_saat_ini }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="items[0][jumlah]" class="form-control form-control-sm" min="1" placeholder="Jumlah Beli" required>
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row" style="display:none;">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="btn-add-item">
+                                    <i class="fa-solid fa-plus me-1"></i> Tambah Item Lain
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Catatan Tambahan</label>
+                                <textarea name="catatan" class="form-control form-control-sm" rows="2" placeholder="Catatan pengadaan..."></textarea>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="reset" class="btn btn-sm btn-secondary" onclick="resetFormBelanja()">Reset Form</button>
+                                <button type="submit" class="btn btn-sm btn-success text-white" style="background-color: #0b6e39;">
+                                    <i class="fa-solid fa-floppy-disk me-1"></i> Simpan Rencana Belanja
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: DAFTAR RENCANA BELANJA -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -34,9 +148,6 @@
                     <h6 class="card-title text-success font-weight-bold mb-0" style="color: #0b6e39 !important;">
                         <i class="fa-solid fa-cart-shopping me-1"></i> Daftar Rencana Belanja / Pengadaan ATK
                     </h6>
-                    <button type="button" class="btn btn-sm btn-success text-white" data-bs-toggle="modal" data-bs-target="#modalRencanaBelanja" style="background-color: #0b6e39; border-color: #0b6e39;">
-                        <i class="fa-solid fa-plus me-1"></i> Buat Rencana Belanja Baru
-                    </button>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -134,7 +245,7 @@
         </div>
     </div>
 
-    <!-- Section 2: Filter Rekapitulasi Bulanan -->
+    <!-- SECTION 3: REKAPITULASI BULANAN -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm border-0">
@@ -199,92 +310,122 @@
     </div>
 </div>
 
-<!-- MODAL BUAT RENCANA BELANJA -->
-<div class="modal fade" id="modalRencanaBelanja" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white" style="background-color: #0b6e39;">
-                <h5 class="modal-title text-white mb-0"><i class="fa-solid fa-cart-plus me-2"></i> Buat Rencana Belanja ATK Baru</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('atk.rencana-belanja.store') }}" method="POST">
-                @csrf
-                <div class="modal-body p-4 text-dark">
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label fw-bold">Nama Kegiatan / Pengadaan <span class="text-danger">*</span></label>
-                            <input type="text" name="nama_kegiatan" class="form-control form-control-sm" placeholder="Contoh: Pengadaan ATK Triwulan IV 2026" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Tanggal Rencana <span class="text-danger">*</span></label>
-                            <input type="date" name="tanggal_rencana" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Pilih Barang yang Akan Dibeli <span class="text-danger">*</span></label>
-                        <div id="wrapper-item-belanja">
-                            <div class="row g-2 mb-2 item-row">
-                                <div class="col-md-7">
-                                    <select name="items[0][item_id]" class="form-select form-select-sm" required>
-                                        <option value="">-- Pilih Barang --</option>
-                                        @foreach($items as $barang)
-                                            <option value="{{ $barang->id }}">{{ $barang->nama_barang }} ({{ $barang->satuan }})</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="number" name="items[0][jumlah]" class="form-control form-control-sm" min="1" placeholder="Jumlah Beli" required>
-                                </div>
-                                <div class="col-md-1 text-end">
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-success mt-2" id="btn-add-item"><i class="fa-solid fa-plus me-1"></i> Tambah Item Lain</button>
-                    </div>
-
-                    <div class="mb-0">
-                        <label class="form-label fw-bold">CatatanTambahan</label>
-                        <textarea name="catatan" class="form-control form-control-sm" rows="2" placeholder="Catatan pengadaan..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-sm btn-success text-white" style="background-color: #0b6e39;">Simpan Rencana Belanja</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 @push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         let itemIndex = 1;
         const wrapper = document.getElementById('wrapper-item-belanja');
         const btnAdd = document.getElementById('btn-add-item');
 
-        btnAdd.addEventListener('click', function () {
-            const firstRow = wrapper.querySelector('.item-row');
-            const newRow = firstRow.cloneNode(true);
-            
-            // Reset input values
-            newRow.querySelector('select').name = `items[${itemIndex}][item_id]`;
-            newRow.querySelector('select').value = '';
-            newRow.querySelector('input').name = `items[${itemIndex}][jumlah]`;
-            newRow.querySelector('input').value = '';
-            
-            const btnRemove = newRow.querySelector('.btn-remove-row');
-            btnRemove.style.display = 'block';
-            btnRemove.addEventListener('click', function () {
-                newRow.remove();
+        // =========================================================================
+        // FIX UNTUK MEMATIKAN BENTROK RE-TRIGGERING DATE PICKER
+        // =========================================================================
+        function fixDatePickerBehavior() {
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(function (input) {
+                // Hentikan penanganan event bawaan template yang merebut fokus
+                input.addEventListener('change', function () {
+                    this.blur(); // Memaksa kursor keluar dari input
+                });
+                
+                // Cegah event focus ulang saat diklik area luar
+                input.addEventListener('blur', function (e) {
+                    e.stopImmediatePropagation();
+                });
             });
+        }
+        fixDatePickerBehavior();
 
-            wrapper.appendChild(newRow);
-            itemIndex++;
+        // =========================================================================
+        // SELECT2 & DYNAMIC ROW SCRIPT
+        // =========================================================================
+        function initSelect2(element) {
+            if (typeof $.fn.select2 !== 'undefined') {
+                $(element).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: '-- Cari / Pilih Barang --',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        }
+
+        // Inisialisasi awal Select2
+        $('.select2-item').each(function () {
+            initSelect2(this);
         });
+
+        // Event Tambah Baris Baru
+        if (btnAdd) {
+            btnAdd.addEventListener('click', function () {
+                const rowTemplate = `
+                    <tr class="item-row">
+                        <td>
+                            <select name="items[${itemIndex}][item_id]" class="form-select form-select-sm select2-item-new" required>
+                                <option value="">-- Cari / Pilih Barang --</option>
+                                @foreach($items as $barang)
+                                    <option value="{{ $barang->id }}">{{ addslashes($barang->nama_barang) }} ({{ $barang->satuan }}) - Stok: {{ $barang->stok_saat_ini }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="items[${itemIndex}][jumlah]" class="form-control form-control-sm" min="1" placeholder="Jumlah Beli" required>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+
+                wrapper.insertAdjacentHTML('beforeend', rowTemplate);
+                
+                const newSelect = wrapper.querySelector(`select[name="items[${itemIndex}][item_id]"]`);
+                initSelect2(newSelect);
+
+                itemIndex++;
+                updateRemoveButtons();
+            });
+        }
+
+        // Event Hapus Baris
+        if (wrapper) {
+            wrapper.addEventListener('click', function (e) {
+                const btnRemove = e.target.closest('.btn-remove-row');
+                if (btnRemove) {
+                    const row = btnRemove.closest('.item-row');
+                    const selectElement = row.querySelector('select');
+                    if ($(selectElement).data('select2')) {
+                        $(selectElement).select2('destroy');
+                    }
+                    row.remove();
+                    updateRemoveButtons();
+                }
+            });
+        }
+
+        function updateRemoveButtons() {
+            const rows = wrapper.querySelectorAll('.item-row');
+            rows.forEach((row) => {
+                const btn = row.querySelector('.btn-remove-row');
+                if (rows.length === 1) {
+                    btn.style.display = 'none';
+                } else {
+                    btn.style.display = 'inline-block';
+                }
+            });
+        }
     });
+
+    function resetFormBelanja() {
+        setTimeout(function() {
+            $('.select2-item').val('').trigger('change');
+        }, 100);
+    }
 </script>
 @endpush
 @endsection
