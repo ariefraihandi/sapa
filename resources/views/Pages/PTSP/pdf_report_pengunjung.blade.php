@@ -6,7 +6,7 @@
     <style>
         /* Margin halaman PDF (Landscape A4) */
         @page { 
-            margin: 8mm 10mm 16mm 10mm; /* Margin bawah 16mm memberikan ruang aman untuk fixed footer */
+            margin: 8mm 10mm 16mm 10mm;
         }
         
         body { 
@@ -33,7 +33,7 @@
             margin-bottom: 12px; 
         }
 
-        /* Executive Summary Box (4 Grid Top) */
+        /* Executive Summary Box (5 Grid Top) */
         .summary-box { 
             width: 100%; 
             margin-bottom: 12px; 
@@ -41,12 +41,12 @@
         }
         .summary-box td { 
             border: 1px solid #198754; 
-            padding: 6px 8px; 
+            padding: 6px 4px; 
             text-align: center; 
             background-color: #f8f9fa; 
         }
         .summary-num { 
-            font-size: 13pt; 
+            font-size: 12pt; 
             font-weight: bold; 
             color: #0d6efd; 
         }
@@ -133,7 +133,7 @@
         /* Footer Otomatis SAPA MS Aceh */
         .app-footer { 
             position: fixed; 
-            bottom: -12mm; /* Diposisikan tepat di area margin bawah per-halaman */
+            bottom: -12mm; 
             left: 0px; 
             right: 0px; 
             height: 15px;
@@ -158,40 +158,45 @@
         </div>
     </div>
 
-    <!-- ================= 1. KOTAK EXECUTIVE SUMMARY GLOBAL ================= -->
+    <!-- ================= 1. KOTAK EXECUTIVE SUMMARY GLOBAL (DURASI DIPISAH) ================= -->
     <table class="summary-box">
         <tr>
-            <td style="width: 25%;">
+            <td style="width: 20%;">
                 <div class="summary-num">{{ $totalKeseluruhan }}</div>
                 <div class="summary-label">Total Kunjungan</div>
             </td>
-            <td style="width: 25%;">
+            <td style="width: 20%;">
                 <div class="summary-num" style="color: #198754;">{{ $totalFisik }}</div>
                 <div class="summary-label">Pengunjung Fisik</div>
             </td>
-            <td style="width: 25%;">
-                <div class="summary-num" style="color: #0dcaf0;">{{ $totalSapa }}</div>
+            <td style="width: 20%;">
+                <div class="summary-num" style="color: #6f42c1;">{{ $totalSapa }}</div>
                 <div class="summary-label">Layanan Online (SAPA)</div>
             </td>
-            <td style="width: 25%;">
-                <div class="summary-num" style="color: #fd7e14;">{{ $avgDurasiFormatted }}</div>
-                <div class="summary-label">Rata-Rata Durasi Layanan</div>
+            <td style="width: 20%;">
+                <div class="summary-num" style="color: #0d6efd;">{{ $avgDurasiFisikFormatted }}</div>
+                <div class="summary-label">Avg Durasi (Tatap Muka)</div>
+            </td>
+            <td style="width: 20%;">
+                <div class="summary-num" style="color: #fd7e14;">{{ $avgDurasiSapaFormatted }}</div>
+                <div class="summary-label">Avg Durasi (Online SAPA)</div>
             </td>
         </tr>
     </table>
 
-    <!-- ================= 2. TABEL REKAPITULASI & PERFORMANSI SATKER (Tampil Jika Rekap Se-Aceh) ================= -->
+    <!-- ================= 2. TABEL REKAPITULASI & PERFORMANSI SATKER ================= -->
     @if($isAllSatker)
         <div class="section-title">RANGKUMAN LAYANAN & PERFORMANSI KECEPATAN MELAYANI</div>
         <table class="data-table">
             <thead>
                 <tr>
-                    <th width="5%">RANK</th>
+                    <th width="4%">RANK</th>
                     <th>NAMA MAHKAMAH SYAR'IYAH</th>
-                    <th width="15%">TATAP MUKA</th>
-                    <th width="15%">SAPA (ONLINE)</th>
-                    <th width="15%">TOTAL</th>
-                    <th width="22%">RATA-RATA WAKTU MELAYANI</th>
+                    <th width="12%">TATAP MUKA</th>
+                    <th width="12%">SAPA (ONLINE)</th>
+                    <th width="12%">TOTAL</th>
+                    <th width="18%">AVG DURASI (TATAP MUKA)</th>
+                    <th width="18%">AVG DURASI (ONLINE SAPA)</th>
                 </tr>
             </thead>
             <tbody>
@@ -202,11 +207,12 @@
                         <td class="text-center">{{ $stkStat['tatap_muka'] }} Orang</td>
                         <td class="text-center">{{ $stkStat['sapa'] }} Orang</td>
                         <td class="text-center"><strong>{{ $stkStat['total'] }} Orang</strong></td>
-                        <td class="text-center"><strong>{{ $stkStat['avg_durasi'] }}</strong></td>
+                        <td class="text-center"><span style="color:#0d6efd; font-weight:bold;">{{ $stkStat['avg_durasi_fisik'] }}</span></td>
+                        <td class="text-center"><span style="color:#fd7e14; font-weight:bold;">{{ $stkStat['avg_durasi_sapa'] }}</span></td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center"><em>Tidak ada data rekapitulasi.</em></td>
+                        <td colspan="7" class="text-center"><em>Tidak ada data rekapitulasi.</em></td>
                     </tr>
                 @endforelse
             </tbody>
@@ -330,7 +336,7 @@
                         Tatap Muka: <strong>{{ $stkData['tatap_muka'] }}</strong> | SAPA: <strong>{{ $stkData['sapa'] }}</strong> | Total: <strong>{{ $stkData['total'] }} Pengguna</strong>
                     </td>
                     <td colspan="2" class="text-center">
-                        Rata-Rata: <strong>{{ $stkData['avg_durasi'] }}</strong>
+                        Avg Tatap Muka: <strong>{{ $stkData['avg_durasi_fisik'] }}</strong> | Avg SAPA: <strong>{{ $stkData['avg_durasi_sapa'] }}</strong>
                     </td>
                 </tr>
             </tfoot>

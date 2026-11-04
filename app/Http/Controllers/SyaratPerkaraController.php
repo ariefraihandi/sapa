@@ -427,46 +427,38 @@ class SyaratPerkaraController extends Controller
             'exclude_ms_aceh' => 'nullable|boolean',
         ]);
 
-        $user = Auth::user();
-        $userSatker = $user ? $user->satker : null;
+        $user = Auth::user();$userSatker = $user ? $user->satker : null;
 
         $isMsAceh = ($userSatker && (
             strtolower($userSatker->satker_vshort ?? '') === 'ms-aceh' || 
             strtolower($userSatker->satker_short_name ?? '') === 'ms aceh'
         ));
 
-        $tipePeriode      = $request->tipe_periode;
-        $tahun            = $request->tahun;
-        $bulan            = $request->bulan;
-        $triwulan         = $request->triwulan;
-        $selectedSatkerId = $request->satker_id;
-        $samarkan         = $request->has('samarkan_detail') && $request->samarkan_detail == '1';
-        $excludeMsAceh    = $isMsAceh && $request->has('exclude_ms_aceh') && $request->exclude_ms_aceh == '1';
+        $tipePeriode      =$request->tipe_periode;
+        $tahun            =$request->tahun;
+        $bulan            =$request->bulan;
+        $triwulan         =$request->triwulan;
+        $selectedSatkerId =$request->satker_id;
+        $samarkan         = $request->has('samarkan_detail') &&$request->samarkan_detail == '1';
+        $excludeMsAceh    =$isMsAceh && $request->has('exclude_ms_aceh') &&$request->exclude_ms_aceh == '1';
 
-        // Ambil Satker MS Aceh untuk filter exclude jika diperlukan
         $msAcehSatker = Satker::where('satker_vshort', 'ms-aceh')
             ->orWhere('satker_short_name', 'MS ACEH')->first();
 
         // Base Query Pengunjung
-        $query = PengunjungPtsp::with(['satker'])->whereYear('created_at', $tahun);
+        $query = PengunjungPtsp::with(['satker'])->whereYear('created_at',$tahun);
 
         $isAllSatker = false;
 
         if ($isMsAceh) {
             if ($excludeMsAceh) {
-                // Filter: Kecualikan Data MS Aceh dari Query Database
                 if ($msAcehSatker) {
-                    $query->where('satker_id', '!=', $msAcehSatker->id);
+                    $query->where('satker_id', '!=',$msAcehSatker->id);
                 }
                 $isAllSatker = true;
-
-                // 💡 Judul tetap bersih tanpa tulisan "(TANPA MS ACEH)"
                 $namaSatker = 'MAHKAMAH SYAR\'IYAH SE-ACEH';
             } else {
-                if ($selectedSatkerId && $selectedSatkerId !== 'all') {
-                    $query->where('satker_id', $selectedSatkerId);
-                    $targetSatker = Satker::find($selectedSatkerId);
-                    $namaSatker = $targetSatker ? $targetSatker->satker_name : 'Mahkamah Syar\'iyah';
+                if ($selectedSatkerId && $selectedSatkerId !== 'all') {$query->where('satker_id', $selectedSatkerId);$targetSatker = Satker::find($selectedSatkerId);$namaSatker = $targetSatker ? $targetSatker->satker_name : 'Mahkamah Syar\'iyah';
                 } else {
                     $isAllSatker = true;
                     $namaSatker = 'SELURUH MAHKAMAH SYAR\'IYAH SE-ACEH';
@@ -474,15 +466,13 @@ class SyaratPerkaraController extends Controller
             }
         } else {
             if ($userSatker) {
-                $query->where('satker_id', $userSatker->id);
+                $query->where('satker_id',$userSatker->id);
             }
             $namaSatker = $userSatker ? $userSatker->satker_name : 'Mahkamah Syar\'iyah';
         }
 
         // Filter Berdasarkan Periode Waktu
-        if ($tipePeriode === 'bulanan') {
-            $query->whereMonth('created_at', $bulan);
-            $periodeLabel = Carbon::createFromDate($tahun, $bulan, 1)->translatedFormat('F Y');
+        if ($tipePeriode === 'bulanan') {$query->whereMonth('created_at', $bulan);$periodeLabel = Carbon::createFromDate($tahun,$bulan, 1)->translatedFormat('F Y');
         } else {
             $triwulanMonths = [
                 1 => [1, 2, 3],
@@ -490,75 +480,71 @@ class SyaratPerkaraController extends Controller
                 3 => [7, 8, 9],
                 4 => [10, 11, 12],
             ];
-            $months = $triwulanMonths[(int)$triwulan] ?? [1, 2, 3];
-            $query->whereIn(\DB::raw('MONTH(created_at)'), $months);
-            $periodeLabel = "Triwulan {$triwulan} Tahun {$tahun}";
+            $months =$triwulanMonths[(int)$triwulan] ?? [1, 2, 3];$query->whereIn(\DB::raw('MONTH(created_at)'), $months);$periodeLabel = "Triwulan {$triwulan} Tahun {$tahun}";
         }
 
-        $allPengunjung = $query->orderBy('created_at', 'asc')->get();
+        $allPengunjung =$query->orderBy('created_at', 'asc')->get();
 
         // Helper Sensor Teks Kontak/Identitas
-        $maskText = function ($text, $visibleChars = 2) {
+        $maskText = function ($text,$visibleChars = 2) {
             if (empty($text)) return '-';
             $len = strlen($text);
-            if ($len <= $visibleChars) return str_repeat('*', $len);
-            return substr($text, 0, $visibleChars) . str_repeat('*', max(1, $len - $visibleChars));
+            if ($len <= $visibleChars) return str_repeat('*',$len);
+            return substr($text, 0,$visibleChars) . str_repeat('*', max(1, $len -$visibleChars));
         };
 
         // Helper Format Durasi Teks (Detik ke Jam/Menit)
         $formatDurasiText = function ($seconds) {
-            if (!$seconds || $seconds <= 0) return '-';
-            if ($seconds < 60) return $seconds . 'd';
+            if (!$seconds ||$seconds <= 0) return '-';
+            if ($seconds < 60) return round($seconds) . 'd';
             $minutes = floor($seconds / 60);
-            $sec = $seconds % 60;
-            if ($minutes < 60) return $minutes . 'm ' . ($sec > 0 ? $sec . 'd' : '');
+            $sec = round($seconds % 60);
+            if ($minutes < 60) return$minutes . 'm ' . ($sec > 0 ?$sec . 'd' : '');
             $hours = floor($minutes / 60);
-            $min = $minutes % 60;
-            if ($hours < 24) return $hours . 'j ' . ($min > 0 ? $min . 'm' : '');
+            $min = round($minutes % 60);
+            if ($hours < 24) return$hours . 'j ' . ($min > 0 ?$min . 'm' : '');
             $days = floor($hours / 24);
-            $hr = $hours % 24;
-            return $days . 'h ' . ($hr > 0 ? $hr . 'j' : '');
+            $hr = round($hours % 24);
+            return $days . 'h ' . ($hr > 0 ?$hr . 'j' : '');
         };
 
         // Pre-fetch JenisPerkara untuk lookup nama layanan jika berupa UUID
-        $allJenisPerkara = \App\Models\JenisPerkara::all()->keyBy('id');
+        $allJenisPerkara = JenisPerkara::all()->keyBy('id');
 
         // Transform Data Pengunjung
-        $allPengunjung->transform(function ($item) use ($samarkan, $maskText, $formatDurasiText, $allJenisPerkara) {
-            $item->formatted_durasi_item = $item->is_tindak_lanjut ? $formatDurasiText($item->durasi_tindak_lanjut) : '-';
+        $allPengunjung->transform(function ($item) use ($samarkan,$maskText, $formatDurasiText,$allJenisPerkara) {
+            $item->formatted_durasi_item =$item->is_tindak_lanjut ? $formatDurasiText($item->durasi_tindak_lanjut) : '-';
 
-            // Konversi UUID Jenis Perkara ke Nama Layanan Resmi
-            if (\Illuminate\Support\Str::isUuid($item->keperluan) && isset($allJenisPerkara[$item->keperluan])) {
-                $item->nama_keperluan = 'Informasi Syarat ' . $allJenisPerkara[$item->keperluan]->nama_layanan;
+            if (Str::isUuid($item->keperluan) && isset($allJenisPerkara[$item->keperluan])) {$item->nama_keperluan = 'Informasi Syarat ' . $allJenisPerkara[$item->keperluan]->nama_layanan;
             } else {
-                $item->nama_keperluan = $item->keperluan ?: '-';
+                $item->nama_keperluan =$item->keperluan ?: '-';
             }
 
-            // Sensor detail jika opsi samarkan di-centang
-            if ($samarkan) {
-                $item->nama_responden = $maskText($item->nama_responden, 2);
-                $item->nik            = $maskText($item->nik, 4);
-                $item->no_hp          = $maskText($item->no_hp, 4);
-                $item->email          = !empty($item->email) ? $maskText(explode('@', $item->email)[0], 2) . '@***.com' : '-';
+            if ($samarkan) {$item->nama_responden = $maskText($item->nama_responden, 2);
+                $item->nik            =$maskText($item->nik, 4);$item->no_hp          = $maskText($item->no_hp, 4);
+                $item->email          = !empty($item->email) ? $maskText(explode('@',$item->email)[0], 2) . '@***.com' : '-';
             }
             return $item;
         });
 
-        // 💡 PEMISAHAN DATA UNTUK DIBACA BLADE PDF
-        $pengunjungFisik = $allPengunjung->where('jenis_layanan', 'tatap_muka')->values();
-        $penggunaSapa   = $allPengunjung->where('jenis_layanan', '!=', 'tatap_muka')->values();
+        // Pemisahan Data Fisik vs SAPA
+        $pengunjungFisik =$allPengunjung->where('jenis_layanan', 'tatap_muka')->values();
+        $penggunaSapa   =$allPengunjung->where('jenis_layanan', '!=', 'tatap_muka')->values();
 
-        // Ringkasan Total
-        $totalFisik = $pengunjungFisik->count();
-        $totalSapa  = $penggunaSapa->count();
+        $totalFisik =$pengunjungFisik->count();
+        $totalSapa  =$penggunaSapa->count();
 
-        // Hitung Rata-rata Durasi Global
-        $dataSelesai = $allPengunjung->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
-        $avgDetik    = $dataSelesai->avg('durasi_tindak_lanjut') ?? 0;
-        $avgDurasiFormatted = $formatDurasiText(round($avgDetik));
+        // 💡 HITUNG RATA-RATA DURASI TERPISAH (GLOBAL)
+        $fisikSelesai =$pengunjungFisik->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
+        $sapaSelesai  =$penggunaSapa->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
+
+        $avgDetikFisik =$fisikSelesai->avg('durasi_tindak_lanjut') ?? 0;
+        $avgDetikSapa  =$sapaSelesai->avg('durasi_tindak_lanjut') ?? 0;
+
+        $avgDurasiFisikFormatted =$formatDurasiText($avgDetikFisik);$avgDurasiSapaFormatted  = $formatDurasiText($avgDetikSapa);
 
         // Statistik Demografi Global
-        $statPekerjaan = $allPengunjung->groupBy(fn($i) => $i->pekerjaan ?? 'Lainnya')
+        $statPekerjaan =$allPengunjung->groupBy(fn($i) =>$i->pekerjaan ?? 'Lainnya')
             ->map->count()->sortDesc();
 
         $statUsia = [
@@ -568,62 +554,65 @@ class SyaratPerkaraController extends Controller
             '≥ 60 Tahun'    => $allPengunjung->filter(fn($i) => (int)$i->usia >= 60)->count(),
         ];
 
-        $kabkotsMap = \App\Models\Kabkot::pluck('nama_kabkot', 'satker_id')->toArray();
-        
-        $statKabkot = $allPengunjung->groupBy(function($item) use ($kabkotsMap) {
+        $kabkotsMap = Kabkot::pluck('nama_kabkot', 'satker_id')->toArray();
+        $statKabkot =$allPengunjung->groupBy(function($item) use ($kabkotsMap) {
             return $kabkotsMap[$item->satker_id] ?? 'Lainnya / Luar Wilayah';
         })->map->count()->sortDesc();
 
-        // Grouping & Ranking per Satker
+        // Grouping & Ranking per Satker (Hitung durasi terpisah per satker)
         $rankingSatker = [];
-        $groupedPengunjung = $allPengunjung->groupBy(fn($item) => $item->satker->satker_name ?? 'Lainnya');
+        $groupedPengunjung =$allPengunjung->groupBy(fn($item) =>$item->satker->satker_name ?? 'Lainnya');
 
-        foreach ($groupedPengunjung as $stkName => $items) {
-            $fisikCount = $items->where('jenis_layanan', 'tatap_muka')->count();
-            $sapaCount  = $items->where('jenis_layanan', '!=', 'tatap_muka')->count();
+        foreach ($groupedPengunjung as $stkName =>$items) {
+            $fisikItems =$items->where('jenis_layanan', 'tatap_muka');
+            $sapaItems  =$items->where('jenis_layanan', '!=', 'tatap_muka');
 
-            $stkSelesai  = $items->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
-            $stkAvgDetik = $stkSelesai->avg('durasi_tindak_lanjut') ?? 0;
+            $stkFisikSelesai =$fisikItems->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
+            $stkSapaSelesai  =$sapaItems->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0);
 
-            $sortedItems = $items->sortBy(fn($item) => $item->jenis_layanan === 'tatap_muka' ? 0 : 1)->values();
+            $stkAvgDetikFisik =$stkFisikSelesai->avg('durasi_tindak_lanjut') ?? 0;
+            $stkAvgDetikSapa  =$stkSapaSelesai->avg('durasi_tindak_lanjut') ?? 0;
+            $stkAvgDetikTotal =$items->where('is_tindak_lanjut', 1)->where('durasi_tindak_lanjut', '>', 0)->avg('durasi_tindak_lanjut') ?? 0;
+
+            $sortedItems =$items->sortBy(fn($item) =>$item->jenis_layanan === 'tatap_muka' ? 0 : 1)->values();
 
             $rankingSatker[] = [
-                'satker_name' => $stkName,
-                'total'       => $items->count(),
-                'tatap_muka'  => $fisikCount,
-                'sapa'        => $sapaCount,
-                'avg_detik'   => $stkAvgDetik,
-                'avg_durasi'  => $formatDurasiText(round($stkAvgDetik)),
-                'items'       => $sortedItems
+                'satker_name'     => $stkName,
+                'total'           => $items->count(),
+                'tatap_muka'      => $fisikItems->count(),
+                'sapa'            => $sapaItems->count(),
+                'avg_detik'       => $stkAvgDetikTotal,
+                'avg_durasi_fisik' => $formatDurasiText($stkAvgDetikFisik),
+                'avg_durasi_sapa'  => $formatDurasiText($stkAvgDetikSapa),
+                'items'           => $sortedItems
             ];
         }
 
-        usort($rankingSatker, fn($a, $b) => $a['avg_detik'] <=> $b['avg_detik']);
+        usort($rankingSatker, fn($a,$b) => $a['avg_detik'] <=>$b['avg_detik']);
 
-        // Konfigurasi Penanggung Jawab & Lokasi Tanda Tangan
-        $ptspDaerah = $msAcehSatker ? \App\Models\PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
-        $namaPj = $ptspDaerah->nama_pj ?? '___________________________';
+        $ptspDaerah = $msAcehSatker ? PtspDaerah::where('satker_id', $msAcehSatker->id)->first() : null;
+        $namaPj =$ptspDaerah->nama_pj ?? '___________________________';
         $namaKota = 'Banda Aceh';
 
-        // Generate PDF via DomPDF / MPDF
         $pdf = PDF::loadView('Pages.PTSP.pdf_report_pengunjung', [
-            'isAllSatker'        => $isAllSatker,
-            'pengunjungFisik'    => $pengunjungFisik,
-            'penggunaSapa'      => $penggunaSapa,
-            'rankingSatker'      => $rankingSatker,
-            'totalKeseluruhan'   => $allPengunjung->count(),
-            'totalFisik'         => $totalFisik,
-            'totalSapa'          => $totalSapa,
-            'avgDurasiFormatted' => $avgDurasiFormatted,
-            'statPekerjaan'      => $statPekerjaan,
-            'statUsia'           => $statUsia,
-            'statKabkot'         => $statKabkot,
-            'namaSatker'         => $namaSatker,
-            'periodeLabel'       => $periodeLabel,
-            'namaPj'             => $namaPj,
-            'namaKota'           => $namaKota,
-            'samarkan'           => $samarkan,
-            'excludeMsAceh'      => $excludeMsAceh
+            'isAllSatker'             => $isAllSatker,
+            'pengunjungFisik'         => $pengunjungFisik,
+            'penggunaSapa'           => $penggunaSapa,
+            'rankingSatker'           => $rankingSatker,
+            'totalKeseluruhan'        => $allPengunjung->count(),
+            'totalFisik'              => $totalFisik,
+            'totalSapa'               => $totalSapa,
+            'avgDurasiFisikFormatted' => $avgDurasiFisikFormatted,
+            'avgDurasiSapaFormatted'  => $avgDurasiSapaFormatted,
+            'statPekerjaan'           => $statPekerjaan,
+            'statUsia'                => $statUsia,
+            'statKabkot'              => $statKabkot,
+            'namaSatker'              => $namaSatker,
+            'periodeLabel'            => $periodeLabel,
+            'namaPj'                  => $namaPj,
+            'namaKota'                => $namaKota,
+            'samarkan'                => $samarkan,
+            'excludeMsAceh'           => $excludeMsAceh
         ], [], [
             'format'        => 'A4',
             'orientation'   => 'L',
