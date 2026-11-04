@@ -44,7 +44,7 @@ class AtkItem extends Model
     // Relasi ke Transaksi Keluar/Masuk
     public function transactions()
     {
-        return $this->hasMany(AtkTransaction::class, 'atk_item_id');
+        return $this->hasMany(AtkTransaction::class, 'atk_item_id', 'id');
     }
 
     // Relasi ke Detail Rencana Belanja

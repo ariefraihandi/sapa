@@ -44,4 +44,6 @@ class AtkShoppingPlanDetail extends Model
     {
         return $this->belongsTo(AtkItem::class, 'atk_item_id');
     }
+
+    // File: App\Models\AtkShoppingPlan.php
 }

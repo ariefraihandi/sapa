@@ -71,14 +71,11 @@ class AtkController extends Controller
         return view('Pages.ATK.master_barang', compact('items'));
     }
 
-    /**
-     * Submenu 3: Transaksi Stok (Pengeluaran / Transaksi Keluar-Masuk)
-     */
     public function transaksi()
     {
-        $satkerId =$this->getSatkerId();
+        $satkerId = $this->getSatkerId();
 
-        $items = AtkItem::where('satker_id',$satkerId)
+        $items = AtkItem::where('satker_id', $satkerId)
             ->where('stok_saat_ini', '>', 0)
             ->orderBy('nama_barang', 'asc')
             ->get();
@@ -89,22 +86,29 @@ class AtkController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('Pages.ATK.transaksi', compact('items', 'transactions'));
+        // 💡 Generate Nomor Dokumen Otomatis (Format: 001/2026)
+        $tahun = date('Y');
+        $countTrx = AtkTransaction::where('satker_id', $satkerId)
+            ->whereYear('created_at', $tahun)
+            ->where('jenis_transaksi', 'keluar')
+            ->count();
+
+        $autoNomorDokumen = sprintf('%03d/%s', $countTrx + 1, $tahun);
+
+        return view('Pages.ATK.transaksi', compact('items', 'transactions', 'autoNomorDokumen'));
     }
 
-    /**
-     * Submenu 4: Laporan & Rekapitulasi ATK
-     */
     public function laporan(Request $request)
     {
-        $satkerId =$this->getSatkerId();
-        $bulan =$request->get('bulan', date('m'));
-        $tahun =$request->get('tahun', date('Y'));
+        $satkerId = $this->getSatkerId();
+        
+        $bulan = (int) $request->get('bulan', date('m'));
+        $tahun = (int) $request->get('tahun', date('Y'));
 
-        $items = AtkItem::where('satker_id',$satkerId)
-            ->with(['transactions' => function ($q) use ($bulan,$tahun) {
-                $q->whereMonth('tanggal_transaksi',$bulan)
-                  ->whereYear('tanggal_transaksi', $tahun);
+        $items = AtkItem::where('satker_id', $satkerId)
+            ->with(['transactions' => function ($q) use ($bulan, $tahun) {
+                $q->whereMonth('tanggal_transaksi', $bulan)
+                ->whereYear('tanggal_transaksi', $tahun);
             }])
             ->orderBy('nama_barang', 'asc')
             ->get();
@@ -114,7 +118,11 @@ class AtkController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('Pages.ATK.laporan', compact('items', 'shoppingPlans', 'bulan', 'tahun'));
+        $bulanStr = sprintf('%02d', $bulan);
+
+        return view('Pages.ATK.laporan', compact('items', 'shoppingPlans', 'tahun'), [
+            'bulan' => $bulanStr
+        ]);
     }
 
     // =========================================================================
@@ -172,9 +180,6 @@ class AtkController extends Controller
         return redirect()->back()->with('success', 'Barang ATK berhasil dihapus.');
     }
 
-    /**
-     * Transaksi Keluar: Catat Penggunaan Barang (Sesuai Form Fisik Gambar)
-     */
     public function storeKeluar(Request $request)
     {
         $request->validate([
@@ -187,15 +192,27 @@ class AtkController extends Controller
             'tanggal_transaksi' => 'required|date',
         ]);
 
-        $satkerId = $this->getSatkerId();$item = AtkItem::where('satker_id', $satkerId)->findOrFail($request->atk_item_id);
+        $satkerId = $this->getSatkerId();
+        $item = AtkItem::where('satker_id', $satkerId)->findOrFail($request->atk_item_id);
 
-        if ($item->stok_saat_ini <$request->jumlah) {
-            return redirect()->back()->with('error', 'Stok barang tidak mencukupi! Sisa stok: ' . $item->stok_saat_ini . ' ' .$item->satuan);
+        if ($item->stok_saat_ini < $request->jumlah) {
+            return redirect()->back()->with('error', 'Stok barang tidak mencukupi! Sisa stok: ' . $item->stok_saat_ini . ' ' . $item->satuan);
         }
 
-        DB::transaction(function () use ($satkerId, $item,$request) {
+        // Jika nomor dokumen kosong, generate otomatis
+        $nomorDokumen = $request->nomor_dokumen;
+        if (empty($nomorDokumen)) {
+            $tahun = date('Y');
+            $countTrx = AtkTransaction::where('satker_id', $satkerId)
+                ->whereYear('created_at', $tahun)
+                ->where('jenis_transaksi', 'keluar')
+                ->count();
+            $nomorDokumen = sprintf('%03d/%s', $countTrx + 1, $tahun);
+        }
+
+        DB::transaction(function () use ($satkerId, $item, $request, $nomorDokumen) {
             // 1. Kurangi Stok
-            $item->decrement('stok_saat_ini',$request->jumlah);
+            $item->decrement('stok_saat_ini', $request->jumlah);
 
             // 2. Catat Transaksi Keluar
             AtkTransaction::create([
@@ -203,7 +220,7 @@ class AtkController extends Controller
                 'satker_id'         => $satkerId,
                 'atk_item_id'       => $item->id,
                 'user_id'           => Auth::id(),
-                'nomor_dokumen'     => $request->nomor_dokumen,
+                'nomor_dokumen'     => $nomorDokumen,
                 'jenis_transaksi'   => 'keluar',
                 'jumlah'            => $request->jumlah,
                 'nama_pengambil'    => $request->nama_pengambil,
@@ -216,6 +233,84 @@ class AtkController extends Controller
         return redirect()->back()->with('success', 'Transaksi pengeluaran barang berhasil dicatat.');
     }
 
+    public function updateTransaction(Request $request, $id)
+    {
+        $request->validate([
+            'atk_item_id'       => 'required|exists:atk_items,id',
+            'jumlah'            => 'required|numeric|min:1',
+            'nama_pengambil'    => 'required|string|max:255',
+            'ruangan'           => 'required|string|max:255',
+            'nomor_dokumen'     => 'nullable|string|max:100',
+            'keterangan'        => 'nullable|string',
+            'tanggal_transaksi' => 'required|date',
+        ]);
+
+        $satkerId = $this->getSatkerId();
+        $transaction = AtkTransaction::where('satker_id', $satkerId)->findOrFail($id);
+
+        DB::transaction(function () use ($satkerId, $transaction, $request) {
+            // 1. Reset (Kembalikan) stok barang dari transaksi LAMA
+            $oldItem = AtkItem::find($transaction->atk_item_id);
+            if ($oldItem) {
+                if ($transaction->jenis_transaksi === 'keluar') {
+                    $oldItem->increment('stok_saat_ini', $transaction->jumlah);
+                } else {
+                    $oldItem->decrement('stok_saat_ini', $transaction->jumlah);
+                }
+            }
+
+            // 2. Ambil barang BARU (atau barang yang sama setelah stok lama dikembalikan)
+            $newItem = AtkItem::where('satker_id', $satkerId)->findOrFail($request->atk_item_id);
+
+            // Validasi kecukupan stok jika transaksi tipe keluar
+            if ($transaction->jenis_transaksi === 'keluar' && $newItem->stok_saat_ini < $request->jumlah) {
+                throw new \Exception('Stok barang tidak mencukupi! Sisa stok terkini: ' . $newItem->stok_saat_ini . ' ' . $newItem->satuan);
+            }
+
+            // 3. Potong/Tambah stok berdasarkan data transaksi BARU
+            if ($transaction->jenis_transaksi === 'keluar') {
+                $newItem->decrement('stok_saat_ini', $request->jumlah);
+            } else {
+                $newItem->increment('stok_saat_ini', $request->jumlah);
+            }
+
+            // 4. Update data transaksi
+            $transaction->update([
+                'atk_item_id'       => $newItem->id,
+                'nomor_dokumen'     => $request->nomor_dokumen,
+                'jumlah'            => $request->jumlah,
+                'nama_pengambil'    => $request->nama_pengambil,
+                'ruangan'           => $request->ruangan,
+                'keterangan'        => $request->keterangan,
+                'tanggal_transaksi' => $request->tanggal_transaksi,
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Transaksi berhasil diperbarui dan stok telah disesuaikan.');
+    }
+
+    public function destroyTransaction($id)
+    {
+        $satkerId = $this->getSatkerId();
+        $transaction = AtkTransaction::where('satker_id', $satkerId)->findOrFail($id);
+
+        DB::transaction(function () use ($transaction) {
+            // Reset (Kembalikan) stok barang sebelum transaksi dihapus
+            $item = AtkItem::find($transaction->atk_item_id);
+            if ($item) {
+                if ($transaction->jenis_transaksi === 'keluar') {
+                    $item->increment('stok_saat_ini', $transaction->jumlah);
+                } else {
+                    $item->decrement('stok_saat_ini', $transaction->jumlah);
+                }
+            }
+
+            $transaction->delete();
+        });
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dihapus dan stok barang telah dikembalikan.');
+    }
+
     /**
      * Rencana Belanja: Store Header & Details
      */
@@ -224,39 +319,43 @@ class AtkController extends Controller
         $request->validate([
             'nama_kegiatan'   => 'required|string|max:255',
             'tanggal_rencana' => 'required|date',
+            'catatan'         => 'nullable|string',
             'items'           => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:atk_items,id',
-            'items.*.jumlah'  => 'required|numeric|min:1',
+            'items.*.jumlah'  => 'required|integer|min:1',
         ]);
 
-        $satkerId =$this->getSatkerId();
-        $count = AtkShoppingPlan::where('satker_id',$satkerId)->count();
-        $kodeRencana = 'RB-' . date('Ym') . '-' . str_pad($count + 1, 3, '0', STR_PAD_LEFT);
+        $satkerId = $this->getSatkerId();
 
-        DB::transaction(function () use ($satkerId,$kodeRencana, $request) {$plan = AtkShoppingPlan::create([
-                'id'              => (string) Str::uuid(),
+        DB::beginTransaction();
+        try {
+            // Generate Kode Rencana Otomatis
+            $kodeRencana = 'PLN-' . date('Ymd') . '-' . Str::upper(Str::random(4));
+
+            $plan = AtkShoppingPlan::create([
                 'satker_id'       => $satkerId,
-                'created_by'      => Auth::id(),
                 'kode_rencana'    => $kodeRencana,
                 'nama_kegiatan'   => $request->nama_kegiatan,
                 'tanggal_rencana' => $request->tanggal_rencana,
-                'status'          => 'draft',
                 'catatan'         => $request->catatan,
+                'status'          => 'draft',
+                'created_by'      => Auth::id(),
             ]);
 
-            foreach ($request->items as$detailItem) {
-                AtkShoppingPlanDetail::create([
-                    'id'                   => (string) Str::uuid(),
-                    'atk_shopping_plan_id' => $plan->id,
-                    'atk_item_id'          => $detailItem['item_id'],
-                    'jumlah_rencana'       => $detailItem['jumlah'],
-                    'jumlah_realisasi'     => 0,
-                    'estimasi_harga'       => $detailItem['estimasi_harga'] ?? 0,
+            // Masukkan seluruh detail item (menggunakan kolom atk_item_id)
+            foreach ($request->items as $item) {
+                $plan->details()->create([
+                    'atk_item_id'    => $item['item_id'], // Fix: disesuaikan dengan kolom database 'atk_item_id'
+                    'jumlah_rencana' => $item['jumlah'],
                 ]);
             }
-        });
 
-        return redirect()->back()->with('success', 'Rencana belanja ATK berhasil dibuat.');
+            DB::commit();
+            return redirect()->back()->with('success', 'Rencana belanja berhasil dibuat.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan rencana belanja: ' . $e->getMessage());
+        }
     }
 
     /**

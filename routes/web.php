@@ -117,13 +117,21 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/faqs/{id}', [BotDashboardController::class, 'faqsDestroy'])->name('bot.faqs.destroy');
     });
 
-    // Action ATK (Proses Form / Store / Update / Delete) <-- TAMBAHKAN GRUP INI
-    Route::prefix('atk')->group(function () {
-        Route::post('/item/store', [AtkController::class, 'storeItem'])->name('atk.item.store');
-        Route::delete('/item/{id}', [AtkController::class, 'destroyItem'])->name('atk.item.destroy');
-        Route::post('/transaksi/keluar', [AtkController::class, 'storeKeluar'])->name('atk.transaksi.keluar');
-        Route::post('/rencana-belanja/store', [AtkController::class, 'storeRencanaBelanja'])->name('atk.rencana-belanja.store');
-        Route::post('/rencana-belanja/{id}/complete', [AtkController::class, 'completeRencanaBelanja'])->name('atk.rencana-belanja.complete');
+    // Action ATK (Proses Form / Store / Update / Delete)
+    Route::prefix('atk')->name('atk.')->group(function () {
+        // Master Item
+        Route::post('/item/store', [AtkController::class, 'storeItem'])->name('item.store');
+        Route::delete('/item/{id}', [AtkController::class, 'destroyItem'])->name('item.destroy');
+
+        // Transaksi Keluar / Edit / Hapus
+        // Catatan: Ubah ke AtkController jika method updateTransaction & destroyTransaction ada di AtkController
+        Route::post('/transaksi/keluar', [AtkController::class, 'storeKeluar'])->name('transaksi.keluar');
+        Route::put('/transaksi/{id}', [AtkController::class, 'updateTransaction'])->name('transaksi.update');
+        Route::delete('/transaksi/{id}', [AtkController::class, 'destroyTransaction'])->name('transaksi.destroy');
+
+        // Rencana Belanja
+        Route::post('/rencana-belanja/store', [AtkController::class, 'storeRencanaBelanja'])->name('rencana-belanja.store');
+        Route::post('/rencana-belanja/{id}/complete', [AtkController::class, 'completeRencanaBelanja'])->name('rencana-belanja.complete');
     });
 
 
@@ -171,6 +179,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/master-barang', [AtkController::class, 'masterBarang'])->name('atk.master-barang');
             Route::get('/transaksi', [AtkController::class, 'transaksi'])->name('atk.transaksi');
             Route::get('/laporan', [AtkController::class, 'laporan'])->name('atk.laporan');
+
         });
 
     });

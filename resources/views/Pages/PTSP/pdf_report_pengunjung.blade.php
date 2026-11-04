@@ -154,7 +154,6 @@
         <div class="header-subtitle">
             PERIODE: {{ strtoupper($periodeLabel) }} 
             @if($samarkan) <span style="color:red;">(DETAIL DISAMARKAN)</span> @endif
-            @if($excludeMsAceh) <span style="color:blue;">(EXCLUDE MS ACEH)</span> @endif
         </div>
     </div>
 
