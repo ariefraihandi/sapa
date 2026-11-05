@@ -58,6 +58,7 @@ class SyaratPerkaraController extends Controller
         // 💡 LOGIKA CEK & CREATE NOTIFIKASI SATKER
         $notifPtsp = null;
         if ($userSatker) {
+                
             $notifPtsp = NotifikasiPtsp::firstOrCreate(
                 ['satker_id' => $userSatker->id],
                 [
@@ -401,7 +402,7 @@ class SyaratPerkaraController extends Controller
             'author'      => $namaSatker,
         ];
 
-        return view('Pages.PTSP.pengunjung_v2', compact(
+        return view('Pages.PTSP.pengunjung.index', compact(
             'pengunjung', 
             'satkers', 
             'pekerjaans',

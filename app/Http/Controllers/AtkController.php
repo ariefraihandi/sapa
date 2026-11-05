@@ -11,6 +11,7 @@ use App\Models\Satker;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PDF;
 
 class AtkController extends Controller
 {
@@ -399,5 +400,37 @@ class AtkController extends Controller
         });
 
         return redirect()->back()->with('success', 'Belanja ATK berhasil diselesaikan dan stok telah ditambahkan!');
+    }
+
+    public function cetakBukti($id)
+    {
+        $trx = AtkTransaction::with(['item', 'satker'])->findOrFail($id);
+        $satker = $trx->satker ?? Satker::find($this->getSatkerId());
+
+        $namaSatker = strtoupper($satker->satker_name ?? 'MAHKAMAH SYAR\'IYAH ACEH');
+        
+        // Format tanggal transaksi Indonesia (Contoh: 24 Juli 2026)
+        $tanggalTrx = \Carbon\Carbon::parse($trx->tanggal_transaksi)->locale('id')->settings(['parseHTML' => false]);
+        $tanggalFormatted = $tanggalTrx->translatedFormat('d F Y');
+        $kotaSatker = $satker->kota ?? 'Banda Aceh';
+
+        $pdf = PDF::loadView('Pages.ATK.pdf_bukti_pengeluaran', [
+            'trx'              => $trx,
+            'namaSatker'       => $namaSatker,
+            'tanggalFormatted' => $tanggalFormatted,
+            'kotaSatker'       => $kotaSatker,
+        ], [], [
+            'format'        => 'A4',
+            'orientation'   => 'P', // Portrait menyesuaikan foto cetakan
+            'margin_left'   => 15,
+            'margin_right'  => 15,
+            'margin_top'    => 15,
+            'margin_bottom' => 15,
+        ]);
+
+        $nomorClean = Str::slug(str_replace('/', '-', $trx->nomor_dokumen ?? $trx->id));
+        $filename = 'Bukti_Pengeluaran_ATK_' . $nomorClean . '.pdf';
+
+        return $pdf->stream($filename);
     }
 }

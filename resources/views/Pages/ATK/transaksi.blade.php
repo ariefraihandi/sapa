@@ -163,10 +163,18 @@
                                         <td class="small text-muted">{{ $trx->keterangan ?? '-' }}</td>
                                         <td class="text-center">
                                             <div class="btn-group btn-group-sm" role="group">
+                                                <!-- 📄 Tombol Download / Cetak Bukti PDF (Khusus Transaksi Keluar) -->
+                                                @if($trx->jenis_transaksi == 'keluar')
+                                                    <a href="{{ route('atk.transaksi.cetak', $trx->id) }}" target="_blank" class="btn btn-outline-success btn-sm" title="Download Bukti PDF">
+                                                        <i class="fa-solid fa-file-pdf"></i>
+                                                    </a>
+                                                @endif
+
                                                 <!-- Tombol Edit -->
                                                 <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditTrx{{ $trx->id }}">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </button>
+
                                                 <!-- Tombol Hapus -->
                                                 <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalDeleteTrx{{ $trx->id }}">
                                                     <i class="fa-solid fa-trash"></i>

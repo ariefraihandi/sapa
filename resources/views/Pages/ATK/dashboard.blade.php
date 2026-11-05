@@ -73,9 +73,9 @@
                         <h6 class="fw-bold text-white mb-1"><i class="fa-solid fa-hand-holding me-2"></i> Pengeluaran Barang</h6>
                         <p class="small text-white-50 mb-3">Catat pengambilan ATK oleh unit/bagian perkara secara langsung.</p>
                     </div>
-                    <button type="button" class="btn btn-light btn-sm text-success fw-bold w-100" data-bs-toggle="modal" data-bs-target="#modalPengeluaranCepat">
+                    <a href="{{ route('atk.transaksi') }}" class="btn btn-light btn-sm text-success fw-bold w-100">
                         <i class="fa-solid fa-minus-circle me-1"></i> Input Barang Keluar
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

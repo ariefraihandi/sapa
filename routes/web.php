@@ -52,7 +52,7 @@ Route::get('/dokumen', function () { return view('Pages.Dokumen.index'); });
 Route::get('/cekberkas', function () { return view('Pages.Layanan.cek-berkas'); });
 Route::get('/chat', function () { return view('Pages.Layanan.chat'); });
 
-
+Route::get('/atk/transaksi/{id}/cetak-bukti', [AtkController::class, 'cetakBukti'])->name('atk.transaksi.cetak');
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes (Wajib Login)
