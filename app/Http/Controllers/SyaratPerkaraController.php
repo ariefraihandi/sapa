@@ -402,7 +402,7 @@ class SyaratPerkaraController extends Controller
             'author'      => $namaSatker,
         ];
 
-        return view('Pages.PTSP.pengunjung.index', compact(
+        return view('Pages.PTSP.pengunjung_v2', compact(
             'pengunjung', 
             'satkers', 
             'pekerjaans',
